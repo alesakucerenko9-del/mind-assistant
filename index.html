@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mind-ассистент | Осознанная продуктивность</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#FFFFFF;
+  --surface:#F4F4F4;
+  --surface2:#EBEBEB;
+  --border:#DCDCDC;
+  --black:#111111;
+  --green:#4CAF50;
+  --green-light:#81C784;
+  --gray:#888888;
+  --gray-dim:#BBBBBB;
+  --error:#E53935;
+  --font-display:'Bebas Neue','Impact',sans-serif;
+  --font-body:'Manrope','Inter',system-ui,sans-serif;
+}
+
+html{font-size:16px}
+body{font-family:var(--font-body);background:var(--bg);color:var(--black);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ===== SCREENS ===== */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column}
+.screen.hidden{display:none!important}
+
+/* ===== AUTH SCREEN ===== */
+.auth-screen{background:var(--bg)}
+.auth-header{display:flex;justify-content:space-between;align-items:center;padding:24px 48px;border-bottom:1px solid var(--border);background:var(--bg)}
+.brand-mark{font-family:var(--font-display);font-size:30px;color:var(--black);letter-spacing:4px;line-height:1}
+.brand-mark span{color:var(--green)}
+.auth-nav{display:flex;gap:6px}
+.nav-text-link{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gray);cursor:pointer;padding:8px 18px;border:1px solid transparent;transition:all .2s}
+.nav-text-link:hover{color:var(--black)}
+.nav-text-link.active{color:var(--black);border-color:var(--border)}
+.auth-body{flex:1;display:flex;align-items:stretch;overflow:hidden}
+.auth-hero{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:60px 48px;border-right:1px solid var(--border);position:relative;overflow:hidden;background:var(--surface)}
+.auth-hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,var(--border) 1.5px,transparent 1.5px);background-size:28px 28px;opacity:.7}
+.auth-hero-content{position:relative;z-index:1}
+.auth-eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--green);margin-bottom:16px}
+.auth-title{font-family:var(--font-display);font-size:clamp(64px,9vw,116px);line-height:.9;color:var(--black);letter-spacing:2px;margin-bottom:24px}
+.auth-title .accent{color:var(--green)}
+.auth-subtitle{font-size:13px;font-weight:500;color:var(--gray);letter-spacing:.06em}
+.auth-panel{width:400px;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;padding:56px 48px;background:var(--bg)}
+.auth-panel-title{font-family:var(--font-display);font-size:36px;letter-spacing:3px;color:var(--black);margin-bottom:32px}
+.auth-form{display:none;flex-direction:column;gap:12px}
+.auth-form.active{display:flex}
+.field-input{width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);color:var(--black);font-family:var(--font-body);font-size:14px;outline:none;transition:border-color .2s}
+.field-input::placeholder{color:var(--gray-dim)}
+.field-input:focus{border-color:var(--green);background:var(--bg)}
+.cta-btn{display:block;width:100%;margin-top:8px;padding:15px 24px;background:var(--green);color:#fff;border:none;font-family:var(--font-display);font-size:18px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.cta-btn:hover{background:var(--green-light)}
+.auth-error{font-size:12px;color:var(--error);min-height:16px;font-weight:500}
+.auth-footer{padding:14px 48px;border-top:1px solid var(--border);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-dim);display:flex;justify-content:space-between;background:var(--bg)}
+
+/* ===== SETUP SCREENS ===== */
+.setup-screen{background:var(--bg);align-items:center;justify-content:center}
+.setup-layout{max-width:640px;width:100%;padding:60px 48px;display:flex;flex-direction:column;gap:18px}
+.setup-eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--green)}
+.setup-title{font-family:var(--font-display);font-size:clamp(48px,7vw,80px);line-height:.92;color:var(--black);letter-spacing:3px}
+.setup-title .accent{color:var(--green)}
+.setup-desc{font-size:14px;color:var(--gray);font-weight:400}
+.field-input--large{font-size:16px;padding:15px 18px}
+.time-row{display:flex;align-items:center;gap:20px;background:var(--surface);border:1px solid var(--border);padding:12px 16px}
+.time-label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green);width:48px;flex-shrink:0}
+.field-input--time{border:none;background:transparent;color:var(--black);font-family:var(--font-body);font-size:20px;font-weight:300;padding:0;flex:1;outline:none}
+
+/* ===== MAIN APP ===== */
+.main-app{position:fixed;inset:0;display:flex;overflow:hidden;background:var(--bg)}
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:32px 24px;height:100%}
+.sidebar-brand{font-family:var(--font-display);font-size:28px;letter-spacing:4px;color:var(--black);margin-bottom:48px;line-height:1}
+.sidebar-brand span{color:var(--green)}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-link{display:flex;align-items:center;gap:10px;padding:11px 12px;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);border-left:2px solid transparent;transition:all .18s;cursor:pointer}
+.nav-link:hover{color:var(--black);background:var(--surface2)}
+.nav-link.active{color:var(--black);border-left-color:var(--green);background:var(--bg)}
+.nav-link::before{font-size:12px;flex-shrink:0;width:14px;text-align:center;color:var(--green)}
+.nav-link[data-page="planner"]::before{content:'▦'}
+.nav-link[data-page="progress"]::before{content:'◈'}
+.nav-link[data-page="rewards"]::before{content:'◆'}
+.nav-link[data-page="rest"]::before{content:'◉'}
+.sidebar-bottom{display:flex;flex-direction:column;gap:10px;padding-top:20px;border-top:1px solid var(--border)}
+.sidebar-user{font-size:13px;font-weight:700;color:var(--black)}
+.daily-reminder{font-size:11px;line-height:1.5;color:var(--gray);font-style:italic}
+.logout-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:9px 14px;font-family:var(--font-display);font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .18s}
+.logout-btn:hover{border-color:var(--green);color:var(--green)}
+.mobile-header{display:none;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--bg);border-bottom:1px solid var(--border);position:fixed;top:0;left:0;right:0;z-index:200}
+.burger-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:4px}
+.burger-btn span{display:block;width:22px;height:2px;background:var(--black)}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:150}
+.main-content{flex:1;overflow-y:auto;padding:48px 56px;background:var(--bg)}
+
+/* ===== PAGE ELEMENTS ===== */
+.page-eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--green);margin-bottom:8px}
+.page-title{font-family:var(--font-display);font-size:clamp(40px,5vw,64px);line-height:.95;letter-spacing:3px;color:var(--black);margin-bottom:4px}
+.page-divider{border:none;border-top:1px solid var(--border);margin:28px 0}
+.greeting-bar{padding:14px 18px;background:var(--surface);border-left:3px solid var(--green);font-size:14px;color:var(--gray);margin-bottom:32px;font-weight:500}
+.progress-wrap{margin-bottom:40px}
+.progress-meta{display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
+.progress-track{height:2px;background:var(--border)}
+.progress-fill{height:100%;background:var(--green);width:0%;transition:width .4s}
+.tasks-list{display:flex;flex-direction:column;margin-bottom:32px}
+.task-card{padding:18px 0;border-bottom:1px solid var(--border);transition:opacity .2s}
+.task-card.completed{opacity:.4}
+.task-header{display:flex;align-items:center;gap:14px}
+.task-check{width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--green)}
+.task-title{flex:1;font-size:15px;font-weight:500;color:var(--black)}
+.completed .task-title{text-decoration:line-through;color:var(--gray-dim)}
+.task-delete-btn{background:none;border:none;color:var(--gray-dim);cursor:pointer;font-size:18px;line-height:1;padding:0 4px;transition:color .18s}
+.task-delete-btn:hover{color:var(--error)}
+.task-reward-input{width:100%;margin-top:10px;padding:8px 0;border:none;border-bottom:1px dashed var(--border);background:transparent;font-family:var(--font-body);font-size:12px;color:var(--gray);outline:none;transition:border-color .18s}
+.task-reward-input::placeholder{color:var(--gray-dim);font-style:italic}
+.task-reward-input:focus{border-bottom-color:var(--green);color:var(--black)}
+.add-task-form{display:flex;gap:10px;align-items:stretch;margin-top:24px}
+.add-task-form input{flex:1;padding:12px 16px;background:var(--surface);border:1px solid var(--border);color:var(--black);font-family:var(--font-body);font-size:14px;outline:none;transition:border-color .18s}
+.add-task-form input::placeholder{color:var(--gray-dim)}
+.add-task-form input:focus{border-color:var(--green);background:var(--bg)}
+.add-task-form button{background:var(--green);color:#fff;border:none;padding:0 22px;font-family:var(--font-display);font-size:16px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:background .18s}
+.add-task-form button:hover{background:var(--green-light)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:40px}
+.stat-card{background:var(--surface);padding:28px 20px}
+.stat-number{font-family:var(--font-display);font-size:52px;line-height:1;color:var(--green);display:block;letter-spacing:2px}
+.stat-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray);margin-top:4px}
+.rewards-list{display:flex;flex-direction:column}
+.reward-item{display:flex;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--border)}
+.reward-status{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-dim);width:80px;flex-shrink:0}
+.reward-status.claimed{color:var(--green)}
+.reward-text{flex:1;font-size:14px;color:var(--black);font-weight:500}
+.reward-claim-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:8px 16px;font-family:var(--font-display);font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .18s}
+.reward-claim-btn:hover,.reward-claim-btn.claimed{background:var(--green);border-color:var(--green);color:#fff}
+.rest-section{padding:48px 0;border-top:1px solid var(--border)}
+.rest-tip{font-family:var(--font-display);font-size:clamp(28px,4vw,52px);letter-spacing:2px;color:var(--black);margin-bottom:20px;line-height:1.1}
+.rest-note{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gray-dim);margin-top:24px}
+.notification-prompt{position:fixed;bottom:28px;right:28px;z-index:1100;max-width:300px}
+.notification-card{background:var(--bg);border:1px solid var(--border);border-top:3px solid var(--green);padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.10)}
+.notification-card p{font-size:14px;color:var(--black);line-height:1.5;margin-bottom:16px;font-weight:500}
+.notif-actions{display:flex;gap:8px}
+.notif-btn{flex:1;padding:10px;border:none;font-family:var(--font-display);font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer}
+.notif-btn--allow{background:var(--green);color:#fff}
+.notif-btn--deny{background:var(--surface);color:var(--gray)}
+.hidden{display:none!important}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:900px){
+  .auth-body{flex-direction:column}
+  .auth-hero{border-right:none;border-bottom:1px solid var(--border);padding:40px 28px;min-height:220px}
+  .auth-panel{width:100%;padding:28px}
+  .auth-header{padding:18px 24px}
+  .auth-footer{padding:12px 24px}
+}
+@media(max-width:768px){
+  .auth-title{font-size:52px}
+  .auth-hero{padding:28px 20px}
+  .auth-panel{padding:24px 20px}
+  .setup-layout{padding:100px 20px 40px}
+  .main-app{flex-direction:column}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:180;transform:translateX(-100%);transition:transform .28s ease}
+  .sidebar.open{transform:translateX(0)}
+  .mobile-header{display:flex}
+  .main-content{padding:88px 20px 40px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .stat-number{font-size:40px}
+  .notification-prompt{left:12px;right:12px;bottom:12px;max-width:none}
+  .add-task-form{flex-direction:column}
+  .add-task-form button{padding:14px}
+  .reward-item{flex-wrap:wrap;gap:10px}
+  .reward-status{width:auto}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
+  <div id="authScreen" class="screen auth-screen">
+    <header class="auth-header">
+      <div class="brand-mark">MA<span>.</span></div>
+      <nav class="auth-nav">
+        <span class="nav-text-link active" data-tab="login">Вход</span>
+        <span class="nav-text-link" data-tab="register">Регистрация</span>
+      </nav>
+    </header>
+    <div class="auth-body">
+      <div class="auth-hero">
+        <div class="auth-hero-content">
+          <div class="auth-eyebrow">Осознанная продуктивность</div>
+          <h1 class="auth-title">MIND<br><span class="accent">АССИС</span><br>ТЕНТ</h1>
+          <p class="auth-subtitle">Три задачи. Фокус. Награда.</p>
+        </div>
+      </div>
+      <div class="auth-panel">
+        <div class="auth-panel-title" id="authPanelTitle">ВОЙТИ</div>
+        <div id="loginForm" class="auth-form active">
+          <input type="text" id="loginUsername" class="field-input" placeholder="Логин" autocomplete="username">
+          <input type="password" id="loginPassword" class="field-input" placeholder="Пароль" autocomplete="current-password">
+          <button type="button" id="doLoginBtn" class="cta-btn">Войти</button>
+          <p class="auth-error" id="loginError"></p>
+        </div>
+        <div id="registerForm" class="auth-form">
+          <input type="text" id="regUsername" class="field-input" placeholder="Логин" autocomplete="username">
+          <input type="email" id="regEmail" class="field-input" placeholder="Email" autocomplete="email">
+          <input type="password" id="regPassword" class="field-input" placeholder="Пароль" autocomplete="new-password">
+          <button type="button" id="doRegisterBtn" class="cta-btn">Зарегистрироваться</button>
+          <p class="auth-error" id="regError"></p>
+        </div>
+      </div>
+    </div>
+    <footer class="auth-footer">
+      <span>© 2025 Mind-ассистент</span><span>v2.0</span>
+    </footer>
+  </div>
+
+  <!-- ЭКРАН 2: ИМЯ -->
+  <div id="nameSetupScreen" class="screen setup-screen hidden">
+    <div class="setup-layout">
+      <div class="setup-eyebrow">Шаг 1 / 2</div>
+      <h2 class="setup-title">КАК К ВАМ<br><span class="accent">ОБРА</span><br>ЩАТЬСЯ?</h2>
+      <p class="setup-desc">Введите ваше имя — оно появится в приложении</p>
+      <input type="text" id="userNameInput" class="field-input field-input--large" placeholder="Например: Алеся">
+      <button type="button" id="saveNameBtn" class="cta-btn">Продолжить</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 3: УВЕДОМЛЕНИЯ -->
+  <div id="notificationsSetupScreen" class="screen setup-screen hidden">
+    <div class="setup-layout">
+      <div class="setup-eyebrow">Шаг 2 / 2</div>
+      <h2 class="setup-title">ВРЕМЯ<br><span class="accent">НАПОМИ</span><br>НАНИЙ</h2>
+      <p class="setup-desc">Выберите удобное время для утреннего и вечернего уведомления</p>
+      <div class="time-row">
+        <label class="time-label">Утро</label>
+        <input type="time" id="morningTime" class="field-input--time" value="09:00">
+      </div>
+      <div class="time-row">
+        <label class="time-label">Вечер</label>
+        <input type="time" id="eveningTime" class="field-input--time" value="20:00">
+      </div>
+      <button type="button" id="saveNotificationsBtn" class="cta-btn">Сохранить</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 4: ПРИЛОЖЕНИЕ -->
+  <div id="mainApp" class="screen main-app hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">MA<span>.</span></div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-link active" data-page="planner">Планер</a>
+        <a href="#" class="nav-link" data-page="progress">Прогресс</a>
+        <a href="#" class="nav-link" data-page="rewards">Награды</a>
+        <a href="#" class="nav-link" data-page="rest">Отдых</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-user" id="userNameDisplay"></div>
+        <div class="daily-reminder" id="dailyReminder"></div>
+        <button type="button" id="logoutBtn" class="logout-btn">Выйти</button>
+      </div>
+    </aside>
+    <header class="mobile-header">
+      <div class="brand-mark">MA<span>.</span></div>
+      <button type="button" class="burger-btn" id="burgerBtn" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+    <div class="sidebar-overlay hidden" id="sidebarOverlay"></div>
+    <main class="main-content" id="mainContent"></main>
+  </div>
+</div>
+
+<div id="notificationPermission" class="notification-prompt hidden">
+  <div class="notification-card">
+    <p>Получать утренние и вечерние напоминания?</p>
+    <div class="notif-actions">
+      <button type="button" id="allowNotificationsBtn" class="notif-btn notif-btn--allow">Да</button>
+      <button type="button" id="denyNotificationsBtn" class="notif-btn notif-btn--deny">Нет</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== ХРАНИЛИЩЕ ==========
+let users = JSON.parse(localStorage.getItem('mind_users')) || [];
+let currentUser = JSON.parse(localStorage.getItem('mind_currentUser')) || null;
+
+function saveUsers() { localStorage.setItem('mind_users', JSON.stringify(users)); }
+function saveCurrentUser() {
+  localStorage.setItem('mind_currentUser', JSON.stringify(currentUser));
+  const idx = users.findIndex(u => u.id === currentUser.id);
+  if (idx !== -1) { users[idx] = currentUser; saveUsers(); }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  const target = document.getElementById(id);
+  if (target) target.classList.remove('hidden');
+}
+
+function setupAuthTabs() {
+  document.querySelectorAll('.nav-text-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const tab = link.dataset.tab;
+      document.querySelectorAll('.nav-text-link').forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      const form = document.getElementById(tab + 'Form');
+      if (form) form.classList.add('active');
+      const titleEl = document.getElementById('authPanelTitle');
+      if (titleEl) titleEl.textContent = tab === 'login' ? 'ВОЙТИ' : 'РЕГИСТРАЦИЯ';
+    });
+  });
+}
+
+function register(username, email, password) {
+  if (users.find(u => u.username === username)) {
+    const el = document.getElementById('regError');
+    if (el) el.textContent = 'Пользователь уже существует';
+    return false;
+  }
+  users.push({ id: Date.now(), username, email, password, name: '', isProfileSetup: false,
+    notificationTimeMorning: '09:00', notificationTimeEvening: '20:00', tasks: [], claimedRewards: [] });
+  saveUsers();
+  return true;
+}
+
+function login(username, password) {
+  const user = users.find(u => u.username === username && u.password === password);
+  if (!user) {
+    const el = document.getElementById('loginError');
+    if (el) el.textContent = 'Неверный логин или пароль';
+    return false;
+  }
+  currentUser = user;
+  saveCurrentUser();
+  return true;
+}
+
+function routeAfterLogin() {
+  if (!currentUser.name || !currentUser.name.trim()) showScreen('nameSetupScreen');
+  else if (!currentUser.isProfileSetup) showScreen('notificationsSetupScreen');
+  else startMainApp();
+}
+
+function saveUserName(name) {
+  if (!currentUser) return;
+  currentUser.name = name;
+  saveCurrentUser();
+}
+
+function saveNotificationTimes(morning, evening) {
+  if (!currentUser) return;
+  currentUser.notificationTimeMorning = morning;
+  currentUser.notificationTimeEvening = evening;
+  currentUser.isProfileSetup = true;
+  saveCurrentUser();
+  scheduleNotifications();
+  startMainApp();
+}
+
+function requestNotifications() {
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') scheduleNotifications();
+    const panel = document.getElementById('notificationPermission');
+    if (panel) panel.classList.add('hidden');
+  });
+}
+
+function sendNotification(title, body) {
+  if (Notification.permission === 'granted') new Notification(title, { body });
+}
+
+function scheduleNotifications() {
+  if (!currentUser || Notification.permission !== 'granted') return;
+  function scheduleAt(time, title, body) {
+    const now = new Date();
+    let [h, m] = time.split(':').map(Number);
+    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+    let delay = target - now;
+    if (delay < 0) { target.setDate(target.getDate() + 1); delay = target - now; }
+    setTimeout(() => sendNotification(title, body), delay);
+  }
+  scheduleAt(currentUser.notificationTimeMorning, 'Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
+  scheduleAt(currentUser.notificationTimeEvening, 'Время отдохнуть!', `${currentUser.name}, ты отлично поработала. Награди себя!`);
+}
+
+const MAX_TASKS = 3;
+const REWARD_HINTS = ["Выпить горячий чай","Почитать книгу 15 минут","Послушать любимый плейлист",
+  "Прогуляться на свежем воздухе","Съесть что-то вкусное","Написать три приятных события дня",
+  "Сделать лёгкую растяжку","Сделать самомассаж","Посмотреть любимый сериал"];
+
+function addTask(title) {
+  if (!title || !title.trim()) return;
+  if (currentUser.tasks.length >= MAX_TASKS) { alert(`Максимум ${MAX_TASKS} задачи в день.`); return; }
+  currentUser.tasks.push({ id: Date.now(), title: title.trim(), completed: false, reward: '' });
+  saveCurrentUser(); renderCurrentPage();
+}
+
+function toggleTask(id) {
+  const t = currentUser.tasks.find(t => t.id === id);
+  if (t) { t.completed = !t.completed; saveCurrentUser(); renderCurrentPage(); }
+}
+
+function updateTaskReward(id, val) {
+  const t = currentUser.tasks.find(t => t.id === id);
+  if (t) { t.reward = val; saveCurrentUser(); }
+}
+
+function deleteTask(id) {
+  if (!confirm('Удалить задачу?')) return;
+  currentUser.tasks = currentUser.tasks.filter(t => t.id !== id);
+  if (currentUser.claimedRewards) currentUser.claimedRewards = currentUser.claimedRewards.filter(r => r !== id);
+  saveCurrentUser(); renderCurrentPage();
+}
+
+function toggleRewardClaim(id) {
+  const task = currentUser.tasks.find(t => t.id === id);
+  if (!task || !task.reward || !task.reward.trim()) { alert('Сначала пропишите награду в разделе «Планер»'); return; }
+  if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
+  if (currentUser.claimedRewards.includes(id)) {
+    currentUser.claimedRewards = currentUser.claimedRewards.filter(r => r !== id);
+  } else {
+    currentUser.claimedRewards.push(id);
+    alert(`Отлично! Ты заслужила: ${task.reward}`);
+  }
+  saveCurrentUser(); renderCurrentPage();
+}
+
+function esc(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
+
+function renderPlanner() {
+  const container = document.getElementById('mainContent'); if (!container) return;
+  const completed = currentUser.tasks.filter(t => t.completed).length;
+  const total = currentUser.tasks.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? `Доброе утро, ${currentUser.name}. Выбери задачи на день.`
+    : hour < 18 ? `Хорошего дня, ${currentUser.name}. Держи фокус.`
+    : `Вечер, ${currentUser.name}. Ты сделала достаточно.`;
+
+  const tasksHtml = total === 0
+    ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-dim);padding:24px 0;">Добавь до трёх задач на сегодня</p>`
+    : currentUser.tasks.map(task => {
+        const hint = REWARD_HINTS[task.id % REWARD_HINTS.length];
+        return `<div class="task-card ${task.completed ? 'completed' : ''}">
+          <div class="task-header">
+            <input type="checkbox" class="task-check" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+            <span class="task-title">${esc(task.title)}</span>
+            <button class="task-delete-btn" onclick="deleteTask(${task.id})">×</button>
+          </div>
+          <input type="text" class="task-reward-input"
+            placeholder="Награда: например, ${esc(hint)}"
+            value="${esc(task.reward)}"
+            oninput="updateTaskReward(${task.id}, this.value)">
+        </div>`;
+      }).join('');
+
+  container.innerHTML = `
+    <div class="page-eyebrow">Сегодня</div>
+    <h2 class="page-title">ПЛАНЕР</h2>
+    <hr class="page-divider">
+    <div class="greeting-bar">${greeting}</div>
+    <div class="progress-wrap">
+      <div class="progress-meta"><span>Выполнено</span><span>${completed} / ${total}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="tasks-list">${tasksHtml}</div>
+    ${total < MAX_TASKS
+      ? `<div class="add-task-form">
+           <input type="text" id="newTaskInput" placeholder="Новая задача..." maxlength="120">
+           <button type="button" onclick="addTaskFromInput()">Добавить</button>
+         </div>`
+      : `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-dim);">Три задачи на сегодня — достаточно.</p>`}
+  `;
+}
+
+window.addTaskFromInput = function() {
+  const inp = document.getElementById('newTaskInput');
+  if (inp && inp.value.trim()) { addTask(inp.value); inp.value = ''; }
+};
+
+function renderProgress() {
+  const container = document.getElementById('mainContent'); if (!container) return;
+  const total = currentUser.tasks.length;
+  const completed = currentUser.tasks.filter(t => t.completed).length;
+  const withRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim()).length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  container.innerHTML = `
+    <div class="page-eyebrow">Статистика</div>
+    <h2 class="page-title">ПРОГРЕСС</h2>
+    <hr class="page-divider">
+    <div class="stats-grid">
+      <div class="stat-card"><span class="stat-number">${total}</span><div class="stat-label">Задач добавлено</div></div>
+      <div class="stat-card"><span class="stat-number">${completed}</span><div class="stat-label">Выполнено</div></div>
+      <div class="stat-card"><span class="stat-number">${pct}%</span><div class="stat-label">Прогресс</div></div>
+      <div class="stat-card"><span class="stat-number">${withRewards}</span><div class="stat-label">С наградой</div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-meta"><span>Общий прогресс дня</span><span>${pct}%</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
+function renderRewards() {
+  const container = document.getElementById('mainContent'); if (!container) return;
+  if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
+  const tasksWithReward = currentUser.tasks.filter(t => t.reward && t.reward.trim());
+  const listHtml = tasksWithReward.length === 0
+    ? `<p style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-dim);padding:24px 0;">Пропиши награды за задачи в Планере</p>`
+    : tasksWithReward.map(task => {
+        const claimed = currentUser.claimedRewards.includes(task.id);
+        return `<div class="reward-item">
+          <span class="reward-status ${claimed ? 'claimed' : ''}">${claimed ? 'Получено' : 'Ожидает'}</span>
+          <span class="reward-text">${esc(task.reward)}</span>
+          <button type="button" class="reward-claim-btn ${claimed ? 'claimed' : ''}" onclick="toggleRewardClaim(${task.id})">${claimed ? 'Отменить' : 'Забрать'}</button>
+        </div>`;
+      }).join('');
+  container.innerHTML = `
+    <div class="page-eyebrow">Заслуженный отдых</div>
+    <h2 class="page-title">НАГРАДЫ</h2>
+    <hr class="page-divider">
+    <div class="rewards-list">${listHtml}</div>`;
+}
+
+const restTips = ["Подыши свежим воздухом 5 минут","Выпей чай без телефона","Сделай лёгкую растяжку",
+  "Послушай любимую музыку","Ничего не делай — это тоже отдых","Почитай книгу 15 минут",
+  "Прогуляйся вокруг дома","Сделай самомассаж лица","Посмотри на звёзды или облака",
+  "Зажги ароматическую свечу","Нарисуй что-нибудь просто так","Напиши три приятных события дня"];
+
+function renderRest() {
+  const container = document.getElementById('mainContent'); if (!container) return;
+  const day = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const tip = restTips[day % restTips.length];
+  container.innerHTML = `
+    <div class="page-eyebrow">Каждый день</div>
+    <h2 class="page-title">ОТДЫХ</h2>
+    <hr class="page-divider">
+    <div class="rest-section">
+      <div class="rest-tip">"${tip}"</div>
+      <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p>
+      <div class="rest-note">— Новый совет каждый день</div>
+    </div>`;
+}
+
+function renderCurrentPage() {
+  const active = document.querySelector('.nav-link.active');
+  const page = active?.dataset.page || 'planner';
+  if (page === 'planner') renderPlanner();
+  else if (page === 'progress') renderProgress();
+  else if (page === 'rewards') renderRewards();
+  else if (page === 'rest') renderRest();
+}
+
+function setupNavigation() {
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      renderCurrentPage();
+      closeMobileSidebar();
+    });
+  });
+}
+
+function closeMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+function setupMobileSidebar() {
+  const burger = document.getElementById('burgerBtn');
+  const overlay = document.getElementById('sidebarOverlay');
+  const sidebar = document.getElementById('sidebar');
+  if (burger) {
+    burger.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('hidden');
+    });
+  }
+  if (overlay) overlay.addEventListener('click', closeMobileSidebar);
+}
+
+function startMainApp() {
+  showScreen('mainApp');
+  setupNavigation();
+  setupMobileSidebar();
+  renderCurrentPage();
+  const userNameEl = document.getElementById('userNameDisplay');
+  if (userNameEl) userNameEl.textContent = currentUser.name || currentUser.username;
+  const reminderEl = document.getElementById('dailyReminder');
+  if (reminderEl) {
+    const h = new Date().getHours();
+    reminderEl.textContent = h < 12 ? 'Доброе утро. Выбери три задачи.' : h < 18 ? 'Держи фокус.' : 'Время отдохнуть и наградить себя.';
+  }
+  if (typeof Notification !== 'undefined') {
+    if (Notification.permission === 'default') document.getElementById('notificationPermission')?.classList.remove('hidden');
+    else if (Notification.permission === 'granted') scheduleNotifications();
+  }
+}
+
+function initEventHandlers() {
+  document.getElementById('doLoginBtn').addEventListener('click', () => {
+    const username = document.getElementById('loginUsername')?.value?.trim() || '';
+    const password = document.getElementById('loginPassword')?.value || '';
+    if (login(username, password)) routeAfterLogin();
+  });
+  document.getElementById('doRegisterBtn').addEventListener('click', () => {
+    const username = document.getElementById('regUsername')?.value?.trim() || '';
+    const email = document.getElementById('regEmail')?.value?.trim() || '';
+    const password = document.getElementById('regPassword')?.value || '';
+    if (register(username, email, password)) {
+      document.querySelectorAll('.nav-text-link').forEach(l => l.classList.remove('active'));
+      const loginLink = document.querySelector('.nav-text-link[data-tab="login"]');
+      if (loginLink) loginLink.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      const loginForm = document.getElementById('loginForm');
+      if (loginForm) loginForm.classList.add('active');
+      const loginUsernameEl = document.getElementById('loginUsername');
+      if (loginUsernameEl) loginUsernameEl.value = username;
+      ['regUsername','regEmail','regPassword'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      document.getElementById('regError').textContent = '';
+    }
+  });
+  document.getElementById('saveNameBtn').addEventListener('click', () => {
+    const name = document.getElementById('userNameInput')?.value?.trim() || '';
+    if (name) { saveUserName(name); showScreen('notificationsSetupScreen'); }
+    else alert('Пожалуйста, введите ваше имя');
+  });
+  document.getElementById('saveNotificationsBtn').addEventListener('click', () => {
+    const morning = document.getElementById('morningTime')?.value || '09:00';
+    const evening = document.getElementById('eveningTime')?.value || '20:00';
+    saveNotificationTimes(morning, evening);
+  });
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    currentUser = null;
+    localStorage.removeItem('mind_currentUser');
+    showScreen('authScreen');
+  });
+  document.getElementById('allowNotificationsBtn').addEventListener('click', requestNotifications);
+  document.getElementById('denyNotificationsBtn').addEventListener('click', () => {
+    document.getElementById('notificationPermission')?.classList.add('hidden');
+  });
+  document.getElementById('loginPassword')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('doLoginBtn')?.click(); });
+  document.getElementById('loginUsername')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword')?.focus(); });
+  document.getElementById('userNameInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('saveNameBtn')?.click(); });
+}
+
+function init() {
+  setupAuthTabs();
+  initEventHandlers();
+  if (currentUser) routeAfterLogin();
+  else showScreen('authScreen');
+}
+init();
+</script>
+</body>
+</html>
