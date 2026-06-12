@@ -26,6 +26,7 @@ function setupAuthTabs() {
     });
     
     function handleTabClick(e) {
+        e.preventDefault();
         const tab = e.currentTarget;
         const tabName = tab.getAttribute('data-tab');
         
@@ -91,7 +92,6 @@ function saveNotificationTimes(morning, evening) {
     currentUser.isProfileSetup = true;
     saveCurrentUser();
     scheduleNotifications();
-    // Переход в главное приложение
     startMainApp();
 }
 
@@ -118,12 +118,10 @@ function scheduleNotifications() {
         const [targetHour, targetMin] = targetTime.split(':').map(Number);
         const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, targetMin);
         let delay = target - now;
-        
         if (delay < 0) {
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, targetHour, targetMin);
             delay = tomorrow - now;
         }
-        
         setTimeout(() => sendNotification(title, body), delay);
     }
     
@@ -147,12 +145,10 @@ const REWARD_PLACEHOLDERS = [
 
 function addTask(title) {
     if (!title || !title.trim()) return;
-    
     if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
         alert(`Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном!`);
         return;
     }
-    
     currentUser.tasks.push({
         id: Date.now(),
         title: title.trim(),
@@ -187,23 +183,18 @@ function deleteTask(taskId) {
             currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
         }
         saveCurrentUser();
-        // Обновляем страницу наград в фоне
         renderRewards();
-        // Перерисовываем текущую страницу (Планер)
         renderCurrentPage();
     }
 }
 
-// ========== НАГРАДЫ ==========
 function toggleRewardClaim(taskId) {
     const task = currentUser.tasks.find(t => t.id === taskId);
     if (!task || !task.reward || task.reward.trim() === '') {
         alert('Сначала пропишите награду за эту задачу в разделе "Планер"');
         return;
     }
-    
     if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
-    
     if (currentUser.claimedRewards.includes(taskId)) {
         currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
     } else {
@@ -218,7 +209,6 @@ function toggleRewardClaim(taskId) {
 function renderPlanner() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    
     const completedCount = currentUser.tasks.filter(t => t.completed).length;
     const percent = currentUser.tasks.length ? Math.round((completedCount / currentUser.tasks.length) * 100) : 0;
     const remainingSlots = MAX_TASKS_PER_DAY - currentUser.tasks.length;
@@ -246,13 +236,8 @@ function renderPlanner() {
         `;
         const addBtn = document.getElementById('addTaskBtn');
         const taskInput = document.getElementById('newTaskTitle');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                if (taskInput) {
-                    addTask(taskInput.value);
-                    taskInput.value = '';
-                }
-            });
+        if (addBtn && taskInput) {
+            addBtn.addEventListener('click', () => { addTask(taskInput.value); taskInput.value = ''; });
         }
         return;
     }
@@ -331,7 +316,6 @@ function renderPlanner() {
 function renderProgress() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    
     const total = currentUser.tasks.length;
     const completed = currentUser.tasks.filter(t => t.completed).length;
     const percent = total ? Math.round((completed / total) * 100) : 0;
@@ -357,7 +341,6 @@ function renderProgress() {
 function renderRewards() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    
     const tasksWithRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim() !== '');
     
     if (tasksWithRewards.length === 0) {
@@ -410,24 +393,15 @@ function renderRewards() {
 }
 
 const restTips = [
-    "Подыши свежим воздухом 5 минут",
-    "Выпей чай без телефона",
-    "Сделай лёгкую растяжку",
-    "Послушай любимую музыку",
-    "Ничего не делай — это тоже отдых",
-    "Почитай книгу 15 минут",
-    "Прогуляйся вокруг дома",
-    "Сделай самомассаж лица",
-    "Посмотри на звёзды или облака",
-    "Зажги ароматическую свечу",
-    "Нарисуй что-нибудь просто так",
-    "Напиши три приятных события дня"
+    "Подыши свежим воздухом 5 минут", "Выпей чай без телефона", "Сделай лёгкую растяжку",
+    "Послушай любимую музыку", "Ничего не делай — это тоже отдых", "Почитай книгу 15 минут",
+    "Прогуляйся вокруг дома", "Сделай самомассаж лица", "Посмотри на звёзды или облака",
+    "Зажги ароматическую свечу", "Нарисуй что-нибудь просто так", "Напиши три приятных события дня"
 ];
 
 function renderRest() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
@@ -467,7 +441,6 @@ function setupNavigation() {
     });
 }
 
-// ========== ЗАПУСК ПРИЛОЖЕНИЯ ==========
 function startMainApp() {
     showScreen('mainApp');
     setupNavigation();
@@ -489,28 +462,26 @@ function startMainApp() {
     }
 }
 
-// ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+// ========== ОБРАБОТЧИКИ СОБЫТИЙ (ИСПРАВЛЕНА КНОПКА СОХРАНИТЬ) ==========
 function initEventHandlers() {
     const loginBtn = document.getElementById('doLoginBtn');
     if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
+        loginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const username = document.getElementById('loginUsername')?.value || '';
             const password = document.getElementById('loginPassword')?.value || '';
             if (login(username, password)) {
-                if (!currentUser.name) {
-                    showScreen('nameSetupScreen');
-                } else if (!currentUser.isProfileSetup) {
-                    showScreen('notificationsSetupScreen');
-                } else {
-                    startMainApp();
-                }
+                if (!currentUser.name) showScreen('nameSetupScreen');
+                else if (!currentUser.isProfileSetup) showScreen('notificationsSetupScreen');
+                else startMainApp();
             }
         });
     }
     
     const registerBtn = document.getElementById('doRegisterBtn');
     if (registerBtn) {
-        registerBtn.addEventListener('click', () => {
+        registerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const username = document.getElementById('regUsername')?.value || '';
             const email = document.getElementById('regEmail')?.value || '';
             const password = document.getElementById('regPassword')?.value || '';
@@ -531,34 +502,55 @@ function initEventHandlers() {
     
     const saveNameBtn = document.getElementById('saveNameBtn');
     if (saveNameBtn) {
-        saveNameBtn.addEventListener('click', () => {
+        const newNameBtn = saveNameBtn.cloneNode(true);
+        saveNameBtn.parentNode?.replaceChild(newNameBtn, saveNameBtn);
+        newNameBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const nameInput = document.getElementById('userNameInput');
             const name = nameInput?.value || '';
             if (name.trim()) {
                 saveUserName(name.trim());
                 showScreen('notificationsSetupScreen');
+            } else {
+                alert('Пожалуйста, введите ваше имя');
             }
         });
     }
     
+    // ========== ГЛАВНОЕ ИСПРАВЛЕНИЕ ДЛЯ КНОПКИ СОХРАНИТЬ ==========
     const saveNotificationsBtn = document.getElementById('saveNotificationsBtn');
     if (saveNotificationsBtn) {
-        // Убираем старые обработчики
-        const newBtn = saveNotificationsBtn.cloneNode(true);
-        saveNotificationsBtn.parentNode?.replaceChild(newBtn, saveNotificationsBtn);
-        newBtn.addEventListener('click', (e) => {
+        const parent = saveNotificationsBtn.parentNode;
+        const newSaveBtn = document.createElement('button');
+        newSaveBtn.id = 'saveNotificationsBtn';
+        newSaveBtn.textContent = saveNotificationsBtn.textContent || 'Сохранить';
+        newSaveBtn.className = saveNotificationsBtn.className;
+        parent?.replaceChild(newSaveBtn, saveNotificationsBtn);
+        
+        const handleSave = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             const morningInput = document.getElementById('morningTime');
             const eveningInput = document.getElementById('eveningTime');
             const morning = morningInput?.value || '09:00';
             const evening = eveningInput?.value || '20:00';
+            if (!morning || !evening) {
+                alert('Пожалуйста, выберите время уведомлений');
+                return;
+            }
             saveNotificationTimes(morning, evening);
-        });
+        };
+        
+        newSaveBtn.addEventListener('click', handleSave);
+        newSaveBtn.addEventListener('touchend', handleSave);
     }
     
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
+        const newLogoutBtn = logoutBtn.cloneNode(true);
+        logoutBtn.parentNode?.replaceChild(newLogoutBtn, logoutBtn);
+        newLogoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             currentUser = null;
             localStorage.removeItem('mind_currentUser');
             showScreen('authScreen');
@@ -567,12 +559,20 @@ function initEventHandlers() {
     
     const allowBtn = document.getElementById('allowNotificationsBtn');
     if (allowBtn) {
-        allowBtn.addEventListener('click', requestNotifications);
+        const newAllowBtn = allowBtn.cloneNode(true);
+        allowBtn.parentNode?.replaceChild(newAllowBtn, allowBtn);
+        newAllowBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            requestNotifications();
+        });
     }
     
     const denyBtn = document.getElementById('denyNotificationsBtn');
     if (denyBtn) {
-        denyBtn.addEventListener('click', () => {
+        const newDenyBtn = denyBtn.cloneNode(true);
+        denyBtn.parentNode?.replaceChild(newDenyBtn, denyBtn);
+        newDenyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             const notifPanel = document.getElementById('notificationPermission');
             if (notifPanel) notifPanel.classList.add('hidden');
         });
@@ -585,19 +585,13 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// ========== СТАРТ ==========
 function init() {
     setupAuthTabs();
     initEventHandlers();
-    
     if (currentUser) {
-        if (!currentUser.name) {
-            showScreen('nameSetupScreen');
-        } else if (!currentUser.isProfileSetup) {
-            showScreen('notificationsSetupScreen');
-        } else {
-            startMainApp();
-        }
+        if (!currentUser.name) showScreen('nameSetupScreen');
+        else if (!currentUser.isProfileSetup) showScreen('notificationsSetupScreen');
+        else startMainApp();
     } else {
         showScreen('authScreen');
     }
