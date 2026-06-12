@@ -28,16 +28,12 @@ function setupAuthTabs() {
         const tab = e.currentTarget;
         const tabName = tab.getAttribute('data-tab');
         
-        // Убираем active у всех табов
         tabs.forEach(t => t.classList.remove('active'));
-        // Добавляем active текущему
         tab.classList.add('active');
         
-        // Прячем все формы
         Object.values(forms).forEach(form => {
             if (form) form.classList.remove('active');
         });
-        // Показываем нужную форму
         if (forms[tabName]) {
             forms[tabName].classList.add('active');
         }
@@ -58,11 +54,7 @@ function register(username, email, password) {
         name: '',
         notificationTimeMorning: '09:00',
         notificationTimeEvening: '20:00',
-        tasks: [
-            { id: 1, title: 'Сформулировать 3 главные задачи на день', completed: false, reward: '' },
-            { id: 2, title: 'Выполнить первую задачу до обеда', completed: false, reward: '' },
-            { id: 3, title: 'Завершить день практикой отдыха', completed: false, reward: '' }
-        ]
+        tasks: []  // ← ПУСТОЙ МАССИВ, пользователь сам добавляет задачи
     };
     users.push(newUser);
     saveUsers();
@@ -147,7 +139,6 @@ function toggleTask(taskId) {
         task.completed = !task.completed;
         saveCurrentUser();
         renderPlanner();
-        updateProgressPage();
     }
 }
 
@@ -159,11 +150,47 @@ function updateTaskReward(taskId, rewardText) {
     }
 }
 
+function deleteTask(taskId) {
+    if (confirm('Удалить эту задачу?')) {
+        currentUser.tasks = currentUser.tasks.filter(t => t.id !== taskId);
+        saveCurrentUser();
+        renderPlanner();
+    }
+}
+
 // ========== ОТРИСОВКА СТРАНИЦ ==========
 function renderPlanner() {
     const container = document.getElementById('mainContent');
     const completedCount = currentUser.tasks.filter(t => t.completed).length;
     const percent = currentUser.tasks.length ? Math.round((completedCount / currentUser.tasks.length) * 100) : 0;
+    
+    if (currentUser.tasks.length === 0) {
+        container.innerHTML = `
+            <div class="page-header">
+                <h2>📋 Планер дня</h2>
+                <div class="greeting">🍃 ${currentUser.name || currentUser.username}, добавь свои первые задачи!</div>
+            </div>
+            <div class="progress-block">
+                <div class="progress-label"><span>Прогресс дня</span><span>0%</span></div>
+                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: 0%;"></div></div>
+            </div>
+            <div class="empty-state" style="text-align: center; padding: 60px; background: #f8fafc; border-radius: 24px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
+                <p style="color: #6b6b6b;">У вас пока нет задач</p>
+                <p style="color: #9e9e9e; font-size: 14px;">Добавьте первую задачу ниже</p>
+            </div>
+            <div class="add-task-form">
+                <input type="text" id="newTaskTitle" placeholder="➕ Новая задача...">
+                <button id="addTaskBtn">Добавить</button>
+            </div>
+        `;
+        document.getElementById('addTaskBtn')?.addEventListener('click', () => {
+            const input = document.getElementById('newTaskTitle');
+            addTask(input.value);
+            input.value = '';
+        });
+        return;
+    }
     
     container.innerHTML = `
         <div class="page-header">
@@ -180,6 +207,7 @@ function renderPlanner() {
                     <div class="task-header">
                         <input type="checkbox" class="task-check" ${task.completed ? 'checked' : ''} data-id="${task.id}">
                         <span class="task-title">${escapeHtml(task.title)}</span>
+                        <button class="delete-task-btn" data-id="${task.id}" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #e53935;">🗑️</button>
                     </div>
                     <input type="text" class="task-reward-input" placeholder="Моя награда за эту задачу..." value="${escapeHtml(task.reward)}" data-id="${task.id}">
                 </div>
@@ -196,6 +224,9 @@ function renderPlanner() {
     });
     document.querySelectorAll('.task-reward-input').forEach(inp => {
         inp.addEventListener('change', (e) => updateTaskReward(parseInt(e.target.dataset.id), e.target.value));
+    });
+    document.querySelectorAll('.delete-task-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => deleteTask(parseInt(e.target.dataset.id)));
     });
     document.getElementById('addTaskBtn')?.addEventListener('click', () => {
         const input = document.getElementById('newTaskTitle');
@@ -228,30 +259,64 @@ function renderProgress() {
 
 function renderRewards() {
     const container = document.getElementById('mainContent');
-    const completedTasks = currentUser.tasks.filter(t => t.completed && t.reward);
+    // Получаем все задачи, у которых есть награда (НЕ только выполненные, а все, где прописана награда)
+    const tasksWithRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim() !== '');
+    
     container.innerHTML = `
         <div class="page-header"><h2>🏆 Мои награды</h2></div>
         <div class="rewards-list">
-            ${completedTasks.length ? completedTasks.map(t => `
-                <div class="reward-item">🎁 За задачу «${escapeHtml(t.title)}» — ${escapeHtml(t.reward)}</div>
-            `).join('') : '<p>Пока нет наград. Выполняй задачи и назначай себе награды!</p>'}
+            ${tasksWithRewards.length ? tasksWithRewards.map(t => `
+                <div class="reward-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>🎯 ${escapeHtml(t.title)}</strong>
+                        <span style="font-size: 12px; padding: 4px 12px; border-radius: 20px; background: ${t.completed ? '#c8e6c9' : '#fff3e0'};">
+                            ${t.completed ? '✓ Выполнено' : '○ В процессе'}
+                        </span>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 16px;">
+                        🎁 Награда: ${escapeHtml(t.reward)}
+                    </div>
+                </div>
+            `).join('') : '<p style="text-align: center; padding: 40px;">Пока нет наград. Добавь награду к каждой задаче в разделе "Планер"!</p>'}
         </div>
     `;
 }
 
+// Список пожеланий для отдыха (фиксированный, пользователь не меняет)
+const restTips = [
+    "🌿 Подыши свежим воздухом 5 минут",
+    "☕ Выпей чай без телефона",
+    "🧘‍♀️ Сделай лёгкую растяжку",
+    "🎵 Послушай любимую музыку",
+    "😌 Ничего не делай — это тоже отдых",
+    "📖 Почитай книгу 15 минут",
+    "🚶‍♀️ Прогуляйся вокруг дома",
+    "💆‍♀️ Сделай самомассаж лица",
+    "🌙 Посмотри на звёзды или облака",
+    "🕯️ Зажги ароматическую свечу",
+    "🎨 Нарисуй что-нибудь просто так",
+    "📝 Напиши три приятных события дня"
+];
+
 function renderRest() {
     const container = document.getElementById('mainContent');
-    const tips = ['Подыши свежим воздухом 5 минут', 'Выпей чай без телефона', 'Сделай лёгкую растяжку', 'Послушай любимую музыку', 'Ничего не делай — это тоже отдых'];
-    const randomTip = tips[Math.floor(Math.random() * tips.length)];
+    // Получаем индекс дня в году, чтобы пожелание менялось каждый день
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
+    const tipIndex = dayOfYear % restTips.length;
+    const todayTip = restTips[tipIndex];
+    
     container.innerHTML = `
         <div class="page-header"><h2>🌿 Практика отдыха</h2></div>
         <div class="rest-card">
-            <div class="rest-tip">✨ ${randomTip} ✨</div>
+            <div class="rest-tip">✨ ${todayTip} ✨</div>
             <p>Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p>
-            <button id="refreshTipBtn">Другой совет</button>
+            <div style="margin-top: 32px; font-size: 14px; color: #9e9e9e;">
+                🌟 Новый совет каждый день
+            </div>
         </div>
     `;
-    document.getElementById('refreshTipBtn')?.addEventListener('click', renderRest);
 }
 
 function renderCurrentPage() {
@@ -294,7 +359,6 @@ function startMainApp() {
 
 // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
 function initEventHandlers() {
-    // Вход
     document.getElementById('doLoginBtn').addEventListener('click', () => {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
@@ -305,26 +369,22 @@ function initEventHandlers() {
         }
     });
     
-    // Регистрация
     document.getElementById('doRegisterBtn').addEventListener('click', () => {
         const username = document.getElementById('regUsername').value;
         const email = document.getElementById('regEmail').value;
         const password = document.getElementById('regPassword').value;
         if (register(username, email, password)) {
             document.getElementById('regError').textContent = '';
-            // Переключаем на вкладку входа
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
             document.querySelector('.auth-tab[data-tab="login"]').classList.add('active');
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             document.getElementById('loginForm').classList.add('active');
-            // Очищаем поля
             document.getElementById('regUsername').value = '';
             document.getElementById('regEmail').value = '';
             document.getElementById('regPassword').value = '';
         }
     });
     
-    // Сохранение имени
     document.getElementById('saveNameBtn').addEventListener('click', () => {
         const name = document.getElementById('userNameInput').value;
         if (name.trim()) {
@@ -333,7 +393,6 @@ function initEventHandlers() {
         }
     });
     
-    // Сохранение уведомлений
     document.getElementById('saveNotificationsBtn').addEventListener('click', () => {
         const morning = document.getElementById('morningTime').value;
         const evening = document.getElementById('eveningTime').value;
@@ -341,14 +400,12 @@ function initEventHandlers() {
         startMainApp();
     });
     
-    // Выход
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
         currentUser = null;
         localStorage.removeItem('mind_currentUser');
         showScreen('authScreen');
     });
     
-    // Уведомления
     document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
     document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
         document.getElementById('notificationPermission').classList.add('hidden');
