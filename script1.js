@@ -3,7 +3,12 @@ let users = JSON.parse(localStorage.getItem('mind_users')) || [];
 let currentUser = JSON.parse(localStorage.getItem('mind_currentUser')) || null;
 
 function saveUsers() { localStorage.setItem('mind_users', JSON.stringify(users)); }
-function saveCurrentUser() { localStorage.setItem('mind_currentUser', JSON.stringify(currentUser)); }
+function saveCurrentUser() {
+    localStorage.setItem('mind_currentUser', JSON.stringify(currentUser));
+    // Синхронизируем обновлённого пользователя обратно в массив users
+    const idx = users.findIndex(u => u.id === currentUser.id);
+    if (idx !== -1) { users[idx] = currentUser; saveUsers(); }
+}
 
 // ========== ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ ==========
 function showScreen(screenId) {
@@ -12,52 +17,43 @@ function showScreen(screenId) {
     if (target) target.classList.remove('hidden');
 }
 
-// ========== ПЕРЕКЛЮЧЕНИЕ ВХОд / РЕГИСТРАЦИЯ ==========
+// ========== ПЕРЕКЛЮЧЕНИЕ ВХОД / РЕГИСТРАЦИЯ ==========
 function setupAuthTabs() {
-    const tabs = document.querySelectorAll('.auth-tab');
-    const forms = {
-        login: document.getElementById('loginForm'),
-        register: document.getElementById('registerForm')
-    };
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            e.preventDefault();
-            const name = tab.getAttribute('data-tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            Object.values(forms).forEach(f => f && f.classList.remove('active'));
-            if (forms[name]) forms[name].classList.add('active');
+    document.querySelectorAll('.nav-text-link').forEach(link => {
+        link.addEventListener('click', () => {
+            const tab = link.dataset.tab;
+            document.querySelectorAll('.nav-text-link').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            const form = document.getElementById(tab + 'Form');
+            if (form) form.classList.add('active');
         });
     });
 }
 
-// ========== РЕГИСТРАЦИЯ ==========
+// ========== РЕГИСТРАЦИЯ И ВХОД ==========
 function register(username, email, password) {
     if (users.find(u => u.username === username)) {
         const el = document.getElementById('regError');
         if (el) el.textContent = 'Пользователь уже существует';
         return false;
     }
-    const newUser = {
+    users.push({
         id: Date.now(),
-        username,
-        email,
-        password,
+        username, email, password,
         name: '',
-        isProfileSetup: false,          // FIX #2: флаг первого входа
+        isProfileSetup: false,
         notificationTimeMorning: '09:00',
         notificationTimeEvening: '20:00',
         tasks: [],
         claimedRewards: []
-    };
-    users.push(newUser);
+    });
     saveUsers();
     return true;
 }
 
-// ========== ВХОД ==========
 function login(username, password) {
+    // Берём актуальные данные из массива users (не из кеша currentUser)
     const user = users.find(u => u.username === username && u.password === password);
     if (!user) {
         const el = document.getElementById('loginError');
@@ -69,27 +65,10 @@ function login(username, password) {
     return true;
 }
 
-// ========== FIX #2: маршрут после входа — смотрим isProfileSetup ==========
-function routeAfterAuth() {
-    if (!currentUser) { showScreen('authScreen'); return; }
-    if (!currentUser.name) {
-        showScreen('nameSetupScreen');
-    } else if (!currentUser.isProfileSetup) {
-        showScreen('notificationsSetupScreen');
-    } else {
-        // Пользователь уже настроен — сразу в приложение
-        startMainApp();
-    }
-}
-
 // ========== НАСТРОЙКА ПРОФИЛЯ ==========
 function saveUserName(name) {
     if (!currentUser) return;
     currentUser.name = name;
-    // Синхронизируем с массивом users
-    const idx = users.findIndex(u => u.id === currentUser.id);
-    if (idx !== -1) users[idx] = currentUser;
-    saveUsers();
     saveCurrentUser();
 }
 
@@ -97,13 +76,21 @@ function saveNotificationTimes(morning, evening) {
     if (!currentUser) return;
     currentUser.notificationTimeMorning = morning;
     currentUser.notificationTimeEvening = evening;
-    currentUser.isProfileSetup = true;          // FIX #2: помечаем как настроенного
-    const idx = users.findIndex(u => u.id === currentUser.id);
-    if (idx !== -1) users[idx] = currentUser;
-    saveUsers();
+    currentUser.isProfileSetup = true;
     saveCurrentUser();
     scheduleNotifications();
     startMainApp();
+}
+
+// ========== ОПРЕДЕЛЕНИЕ НУЖНОГО ЭКРАНА ПОСЛЕ ВХОДА ==========
+function routeAfterLogin() {
+    if (!currentUser.name || currentUser.name.trim() === '') {
+        showScreen('nameSetupScreen');
+    } else if (!currentUser.isProfileSetup) {
+        showScreen('notificationsSetupScreen');
+    } else {
+        startMainApp();
+    }
 }
 
 // ========== УВЕДОМЛЕНИЯ ==========
@@ -123,64 +110,71 @@ function sendNotification(title, body) {
 
 function scheduleNotifications() {
     if (!currentUser || Notification.permission !== 'granted') return;
-
-    function scheduleAt(timeStr, title, body) {
+    function scheduleAt(targetTime, title, body) {
         const now = new Date();
-        const [h, m] = timeStr.split(':').map(Number);
+        const [h, m] = targetTime.split(':').map(Number);
         let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
-        if (target <= now) target.setDate(target.getDate() + 1);
-        setTimeout(() => sendNotification(title, body), target - now);
+        let delay = target - now;
+        if (delay < 0) {
+            target.setDate(target.getDate() + 1);
+            delay = target - now;
+        }
+        setTimeout(() => sendNotification(title, body), delay);
     }
-
-    scheduleAt(currentUser.notificationTimeMorning, 'Доброе утро!',
-        `${currentUser.name}, выбери три фокус-задачи на день.`);
-    scheduleAt(currentUser.notificationTimeEvening, 'Время отдохнуть!',
-        `${currentUser.name}, ты отлично поработала. Награди себя и отдохни.`);
+    scheduleAt(currentUser.notificationTimeMorning, 'Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
+    scheduleAt(currentUser.notificationTimeEvening, 'Время отдохнуть!', `${currentUser.name}, ты отлично поработала. Награди себя!`);
 }
 
 // ========== ЗАДАЧИ ==========
-const MAX_TASKS_PER_DAY = 3;
+const MAX_TASKS = 3;
 const REWARD_PLACEHOLDERS = [
-    "Выпить горячий чай", "Почитать любимую книгу 15 минут",
-    "Послушать любимый плейлист", "Прогуляться на свежем воздухе",
-    "Съесть что-нибудь вкусное", "Написать три приятных события дня",
-    "Сделать лёгкую растяжку", "Сделать самомассаж", "Посмотреть любимый сериал"
+    "Выпить горячий чай",
+    "Почитать книгу 15 минут",
+    "Послушать любимый плейлист",
+    "Прогуляться на свежем воздухе",
+    "Съесть что-то вкусное",
+    "Написать три приятных события дня",
+    "Сделать лёгкую растяжку",
+    "Сделать самомассаж",
+    "Посмотреть любимый сериал"
 ];
 
 function addTask(title) {
     if (!title || !title.trim()) return;
-    if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
-        alert(`Максимум ${MAX_TASKS_PER_DAY} задачи в день. Сфокусируйся на главном!`);
+    if (currentUser.tasks.length >= MAX_TASKS) {
+        alert(`Максимум ${MAX_TASKS} задачи в день.\nСфокусируйся на главном!`);
         return;
     }
+    const placeholder = REWARD_PLACEHOLDERS[Math.floor(Math.random() * REWARD_PLACEHOLDERS.length)];
     currentUser.tasks.push({ id: Date.now(), title: title.trim(), completed: false, reward: '' });
-    syncAndSave();
+    saveCurrentUser();
     renderPlanner();
 }
 
 function toggleTask(taskId) {
     const task = currentUser.tasks.find(t => t.id === taskId);
-    if (task) { task.completed = !task.completed; syncAndSave(); renderPlanner(); }
+    if (task) { task.completed = !task.completed; saveCurrentUser(); renderPlanner(); }
 }
 
-function updateTaskReward(taskId, text) {
+function updateTaskReward(taskId, val) {
     const task = currentUser.tasks.find(t => t.id === taskId);
-    if (task) { task.reward = text; syncAndSave(); }
+    if (task) { task.reward = val; saveCurrentUser(); }
 }
 
 function deleteTask(taskId) {
-    if (confirm('Удалить эту задачу?')) {
-        currentUser.tasks = currentUser.tasks.filter(t => t.id !== taskId);
-        currentUser.claimedRewards = (currentUser.claimedRewards || []).filter(id => id !== taskId);
-        syncAndSave();
-        renderCurrentPage();
+    if (!confirm('Удалить задачу?')) return;
+    currentUser.tasks = currentUser.tasks.filter(t => t.id !== taskId);
+    if (currentUser.claimedRewards) {
+        currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
     }
+    saveCurrentUser();
+    renderCurrentPage();
 }
 
 function toggleRewardClaim(taskId) {
     const task = currentUser.tasks.find(t => t.id === taskId);
-    if (!task || !task.reward?.trim()) {
-        alert('Сначала пропишите награду за эту задачу в Планере');
+    if (!task || !task.reward || !task.reward.trim()) {
+        alert('Сначала пропишите награду в разделе "Планер"');
         return;
     }
     if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
@@ -188,107 +182,79 @@ function toggleRewardClaim(taskId) {
         currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
     } else {
         currentUser.claimedRewards.push(taskId);
-        alert(`Поздравляю! Ты забрала награду: ${task.reward}`);
+        alert(`Отлично! Ты заслужила: ${task.reward}`);
     }
-    syncAndSave();
+    saveCurrentUser();
     renderRewards();
 }
 
-// Синхронизация currentUser → users при каждом изменении данных
-function syncAndSave() {
-    const idx = users.findIndex(u => u.id === currentUser.id);
-    if (idx !== -1) users[idx] = currentUser;
-    saveUsers();
-    saveCurrentUser();
-}
-
+// ========== РЕНДЕРИНГ СТРАНИЦ ==========
 function escapeHtml(text) {
     const d = document.createElement('div');
     d.textContent = text;
     return d.innerHTML;
 }
 
-// ========== РЕНДЕР СТРАНИЦ ==========
-
 function renderPlanner() {
     const container = document.getElementById('mainContent');
     if (!container) return;
     const completed = currentUser.tasks.filter(t => t.completed).length;
     const total = currentUser.tasks.length;
-    const percent = total ? Math.round((completed / total) * 100) : 0;
-    const remaining = MAX_TASKS_PER_DAY - total;
-    const name = currentUser.name || currentUser.username;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    let tasksHtml = '';
-    if (total === 0) {
-        tasksHtml = `
-            <div class="empty-state">
-                <span class="empty-state-icon">📝</span>
-                <p>Нет задач на сегодня</p>
-                <p class="empty-sub">Добавьте первую задачу ниже — максимум ${MAX_TASKS_PER_DAY}</p>
+    const hour = new Date().getHours();
+    const greeting = hour < 12
+        ? `Доброе утро, ${currentUser.name}. Выбери задачи на день.`
+        : hour < 18
+            ? `Хорошего дня, ${currentUser.name}. Держи фокус.`
+            : `Вечер, ${currentUser.name}. Ты сделала достаточно.`;
+
+    const tasksHtml = currentUser.tasks.length === 0
+        ? `<p style="color:var(--gray);font-style:italic;padding:24px 0;">Добавь до трёх задач на сегодня</p>`
+        : currentUser.tasks.map(task => {
+            const placeholder = REWARD_PLACEHOLDERS[task.id % REWARD_PLACEHOLDERS.length] || 'Твоя награда';
+            return `
+            <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                <div class="task-header">
+                    <input type="checkbox" class="task-check" ${task.completed ? 'checked' : ''}
+                        onchange="toggleTask(${task.id})">
+                    <span class="task-title">${escapeHtml(task.title)}</span>
+                    <button class="task-delete-btn" onclick="deleteTask(${task.id})" aria-label="Удалить">×</button>
+                </div>
+                <input type="text" class="task-reward-input"
+                    placeholder="Награда: например, ${escapeHtml(placeholder)}"
+                    value="${escapeHtml(task.reward)}"
+                    onchange="updateTaskReward(${task.id}, this.value)"
+                    oninput="updateTaskReward(${task.id}, this.value)">
             </div>`;
-    } else {
-        tasksHtml = `<div class="tasks-list">` +
-            currentUser.tasks.map(task => `
-                <div class="task-card ${task.completed ? 'completed' : ''}">
-                    <div class="task-header">
-                        <input type="checkbox" class="task-check" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
-                        <span class="task-title">${escapeHtml(task.title)}</span>
-                        <button class="delete-task-btn" data-id="${task.id}" title="Удалить">✕</button>
-                    </div>
-                    <div class="reward-input-wrapper">
-                        <input type="text" class="task-reward-input" placeholder="Моя награда за эту задачу…"
-                            value="${escapeHtml(task.reward)}" data-id="${task.id}"
-                            style="${task.reward?.trim() ? 'border-color:var(--gold);background:var(--warm-white);' : ''}">
-                    </div>
-                </div>`).join('') +
-            `</div>`;
-    }
+        }).join('');
 
     container.innerHTML = `
-        <div class="content-inner">
-            <div class="page-header">
-                <div class="page-eyebrow">Сегодня</div>
-                <h2>Планер дня</h2>
-                <p class="greeting">Привет, <strong>${escapeHtml(name)}</strong> — сфокусируйся на самом важном</p>
+        <div class="page-eyebrow">Сегодня</div>
+        <h2 class="page-title">ПЛАНЕР</h2>
+        <hr class="page-divider">
+        <div class="greeting-bar">${greeting}</div>
+        <div class="progress-wrap">
+            <div class="progress-meta">
+                <span>Выполнено</span>
+                <span>${completed} / ${total}</span>
             </div>
-            <div class="progress-block">
-                <div class="progress-label">
-                    <span>Прогресс дня</span>
-                    <span>${percent}%</span>
-                </div>
-                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${percent}%"></div></div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:${pct}%"></div>
             </div>
-            ${tasksHtml}
-            <div class="add-task-form">
-                <input type="text" id="newTaskTitle" placeholder="Новая задача…" ${remaining <= 0 ? 'disabled' : ''}>
-                <button id="addTaskBtn" type="button" ${remaining <= 0 ? 'disabled' : ''}>+ Добавить</button>
-            </div>
-            <p class="tasks-limit-note">
-                ${remaining <= 0
-                    ? 'Лимит на сегодня достигнут — сфокусируйся на трёх задачах'
-                    : `Осталось слотов: ${remaining} из ${MAX_TASKS_PER_DAY}`}
-            </p>
-        </div>`;
+        </div>
+        <div class="tasks-list">${tasksHtml}</div>
+        ${total < MAX_TASKS ? `
+        <div class="add-task-form">
+            <input type="text" id="newTaskInput" placeholder="Новая задача..." maxlength="120">
+            <button type="button" onclick="addTaskFromInput()">Добавить</button>
+        </div>` : `<p style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray-dim);">Три задачи на сегодня — достаточно.</p>`}
+    `;
+}
 
-    // Навешиваем обработчики
-    container.querySelectorAll('.task-check').forEach(cb =>
-        cb.addEventListener('change', e => toggleTask(parseInt(e.target.dataset.id))));
-    container.querySelectorAll('.task-reward-input').forEach(inp => {
-        inp.addEventListener('change', e => updateTaskReward(parseInt(e.target.dataset.id), e.target.value));
-        inp.addEventListener('input', e => {
-            e.target.style.borderColor = e.target.value.trim() ? 'var(--gold)' : '';
-            e.target.style.background = e.target.value.trim() ? 'var(--warm-white)' : '';
-        });
-    });
-    container.querySelectorAll('.delete-task-btn').forEach(btn =>
-        btn.addEventListener('click', e => deleteTask(parseInt(e.target.dataset.id))));
-    const addBtn = document.getElementById('addTaskBtn');
-    const taskInput = document.getElementById('newTaskTitle');
-    if (addBtn && taskInput) {
-        addBtn.addEventListener('click', () => { addTask(taskInput.value); taskInput.value = ''; });
-        taskInput.addEventListener('keydown', e => { if (e.key === 'Enter') { addTask(taskInput.value); taskInput.value = ''; } });
-    }
+function addTaskFromInput() {
+    const inp = document.getElementById('newTaskInput');
+    if (inp && inp.value.trim()) { addTask(inp.value); inp.value = ''; }
 }
 
 function renderProgress() {
@@ -296,131 +262,103 @@ function renderProgress() {
     if (!container) return;
     const total = currentUser.tasks.length;
     const completed = currentUser.tasks.filter(t => t.completed).length;
-    const percent = total ? Math.round((completed / total) * 100) : 0;
-    const rewardsFilled = currentUser.tasks.filter(t => t.reward?.trim()).length;
-    const claimedCount = (currentUser.claimedRewards || []).length;
+    const withRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim()).length;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     container.innerHTML = `
-        <div class="content-inner">
-            <div class="page-header">
-                <div class="page-eyebrow">Аналитика</div>
-                <h2>Прогресс</h2>
+        <div class="page-eyebrow">Статистика</div>
+        <h2 class="page-title">ПРОГРЕСС</h2>
+        <hr class="page-divider">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-number">${total}</span>
+                <div class="stat-label">Задач добавлено</div>
             </div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-number">${total}<span style="font-size:18px;color:var(--sand)">/${MAX_TASKS_PER_DAY}</span></div>
-                    <div class="stat-label">Задач сегодня</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${completed}</div>
-                    <div class="stat-label">Выполнено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${percent}%</div>
-                    <div class="stat-label">Эффективность</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${rewardsFilled}</div>
-                    <div class="stat-label">Наград назначено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${claimedCount}</div>
-                    <div class="stat-label">Наград получено</div>
-                </div>
+            <div class="stat-card">
+                <span class="stat-number">${completed}</span>
+                <div class="stat-label">Выполнено</div>
             </div>
-            <div class="progress-block">
-                <div class="progress-label"><span>Общий прогресс дня</span><span>${percent}%</span></div>
-                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${percent}%"></div></div>
+            <div class="stat-card">
+                <span class="stat-number">${pct}%</span>
+                <div class="stat-label">Прогресс</div>
             </div>
-        </div>`;
+            <div class="stat-card">
+                <span class="stat-number">${withRewards}</span>
+                <div class="stat-label">С наградой</div>
+            </div>
+        </div>
+        <div class="progress-wrap">
+            <div class="progress-meta">
+                <span>Общий прогресс дня</span>
+                <span>${pct}%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:${pct}%"></div>
+            </div>
+        </div>
+    `;
 }
 
 function renderRewards() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    const tasksWithRewards = currentUser.tasks.filter(t => t.reward?.trim());
+    if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
+    const tasksWithReward = currentUser.tasks.filter(t => t.reward && t.reward.trim());
 
-    if (!tasksWithRewards.length) {
-        container.innerHTML = `
-            <div class="content-inner">
-                <div class="page-header">
-                    <div class="page-eyebrow">Мотивация</div>
-                    <h2>Награды</h2>
-                </div>
-                <div class="empty-state">
-                    <span class="empty-state-icon">🎁</span>
-                    <p>Наград пока нет</p>
-                    <p class="empty-sub">Добавьте награду к задаче в Планере</p>
-                </div>
+    const listHtml = tasksWithReward.length === 0
+        ? `<p style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gray-dim);padding:24px 0;">Пропиши награды за задачи в Планере</p>`
+        : tasksWithReward.map(task => {
+            const claimed = currentUser.claimedRewards.includes(task.id);
+            return `
+            <div class="reward-item">
+                <span class="reward-status ${claimed ? 'claimed' : ''}">${claimed ? 'Получено' : 'Ожидает'}</span>
+                <span class="reward-text">${escapeHtml(task.reward)}</span>
+                <button type="button" class="reward-claim-btn ${claimed ? 'claimed' : ''}"
+                    onclick="toggleRewardClaim(${task.id})">
+                    ${claimed ? 'Отменить' : 'Забрать'}
+                </button>
             </div>`;
-        return;
-    }
+        }).join('');
 
     container.innerHTML = `
-        <div class="content-inner">
-            <div class="page-header">
-                <div class="page-eyebrow">Мотивация</div>
-                <h2>Награды</h2>
-            </div>
-            <div class="rewards-list">
-                ${tasksWithRewards.map(task => {
-                    const claimed = (currentUser.claimedRewards || []).includes(task.id);
-                    return `
-                        <div class="reward-item ${claimed ? 'claimed' : ''}">
-                            <div class="reward-item-header">
-                                <div class="reward-item-title">${escapeHtml(task.title)}</div>
-                                <span class="reward-status-tag ${task.completed ? 'done' : 'pending'}">
-                                    ${task.completed ? 'Выполнено' : 'В процессе'}
-                                </span>
-                            </div>
-                            <div class="reward-content">Награда: ${escapeHtml(task.reward)}</div>
-                            <label class="reward-check-label">
-                                <input type="checkbox" class="reward-claim-check" data-id="${task.id}"
-                                    ${claimed ? 'checked' : ''} ${!task.completed ? 'disabled' : ''}>
-                                <span>${claimed ? 'Награда получена!' : 'Забрать награду'}</span>
-                            </label>
-                            ${!task.completed ? '<p class="reward-warning">Сначала выполните задачу</p>' : ''}
-                        </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-
-    container.querySelectorAll('.reward-claim-check').forEach(cb => {
-        cb.addEventListener('change', e => {
-            if (!cb.disabled) toggleRewardClaim(parseInt(e.target.dataset.id));
-        });
-    });
+        <div class="page-eyebrow">Заслуженный отдых</div>
+        <h2 class="page-title">НАГРАДЫ</h2>
+        <hr class="page-divider">
+        <div class="rewards-list">${listHtml}</div>
+    `;
 }
 
 const restTips = [
-    "Подыши свежим воздухом 5 минут", "Выпей чай без телефона",
-    "Сделай лёгкую растяжку", "Послушай любимую музыку",
-    "Ничего не делай — это тоже отдых", "Почитай книгу 15 минут",
-    "Прогуляйся вокруг дома", "Сделай самомассаж лица",
-    "Посмотри на звёзды или облака", "Зажги ароматическую свечу",
-    "Нарисуй что-нибудь просто так", "Напиши три приятных события дня"
+    "Подыши свежим воздухом 5 минут",
+    "Выпей чай без телефона",
+    "Сделай лёгкую растяжку",
+    "Послушай любимую музыку",
+    "Ничего не делай — это тоже отдых",
+    "Почитай книгу 15 минут",
+    "Прогуляйся вокруг дома",
+    "Сделай самомассаж лица",
+    "Посмотри на звёзды или облака",
+    "Зажги ароматическую свечу",
+    "Нарисуй что-нибудь просто так",
+    "Напиши три приятных события дня"
 ];
 
 function renderRest() {
     const container = document.getElementById('mainContent');
     if (!container) return;
-    const now = new Date();
-    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
     const tip = restTips[dayOfYear % restTips.length];
 
     container.innerHTML = `
-        <div class="content-inner">
-            <div class="page-header">
-                <div class="page-eyebrow">Практика</div>
-                <h2>Отдых</h2>
-            </div>
-            <div class="rest-card">
-                <div class="rest-card-eyebrow">Совет дня</div>
-                <div class="rest-tip">${tip}</div>
-                <p class="rest-sub">Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p>
-                <div class="rest-meta">Новый совет каждый день</div>
-            </div>
-        </div>`;
+        <div class="page-eyebrow">Каждый день</div>
+        <h2 class="page-title">ОТДЫХ</h2>
+        <hr class="page-divider">
+        <div class="rest-section">
+            <div class="rest-tip">"${tip}"</div>
+            <p style="font-size:14px;color:var(--gray);margin-bottom:16px;">Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p>
+            <div class="rest-note">— Новый совет каждый день</div>
+        </div>
+    `;
 }
 
 function renderCurrentPage() {
@@ -435,141 +373,166 @@ function renderCurrentPage() {
 // ========== НАВИГАЦИЯ ==========
 function setupNavigation() {
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', e => {
+        link.addEventListener('click', (e) => {
             e.preventDefault();
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             renderCurrentPage();
-            // На мобильном закрываем меню после выбора
-            closeMobileNav();
+            // Закрыть мобильный сайдбар после перехода
+            closeMobileSidebar();
         });
     });
 }
 
-function setupMobileNav() {
-    const toggle = document.getElementById('mobileNavToggle');
-    const nav = document.getElementById('sidebarNav');
-    const bottom = document.getElementById('sidebarBottom');
-    if (!toggle || !nav) return;
-
-    toggle.addEventListener('click', () => {
-        const isOpen = nav.classList.contains('open');
-        if (isOpen) {
-            closeMobileNav();
-        } else {
-            nav.classList.add('open');
-            if (bottom) bottom.classList.add('open');
-        }
-    });
+// ========== МОБИЛЬНЫЙ САЙДБАР ==========
+function closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.add('hidden');
 }
 
-function closeMobileNav() {
-    const nav = document.getElementById('sidebarNav');
-    const bottom = document.getElementById('sidebarBottom');
-    if (nav) nav.classList.remove('open');
-    if (bottom) bottom.classList.remove('open');
+function setupMobileSidebar() {
+    const burger = document.getElementById('burgerBtn');
+    const overlay = document.getElementById('sidebarOverlay');
+    const sidebar = document.getElementById('sidebar');
+    if (burger) {
+        burger.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('hidden');
+        });
+    }
+    if (overlay) {
+        overlay.addEventListener('click', closeMobileSidebar);
+    }
 }
 
-// ========== ЗАПУСК ПРИЛОЖЕНИЯ ==========
+// ========== ЗАПУСК ОСНОВНОГО ПРИЛОЖЕНИЯ ==========
 function startMainApp() {
     showScreen('mainApp');
     setupNavigation();
-    setupMobileNav();
+    setupMobileSidebar();
     renderCurrentPage();
 
-    const nameEl = document.getElementById('userNameDisplay');
-    if (nameEl) nameEl.textContent = currentUser.name || currentUser.username;
+    const userNameEl = document.getElementById('userNameDisplay');
+    if (userNameEl) userNameEl.textContent = currentUser.name || currentUser.username;
 
-    const hour = new Date().getHours();
     const reminderEl = document.getElementById('dailyReminder');
     if (reminderEl) {
-        if (hour < 12) reminderEl.innerHTML = '☀️ Доброе утро! Выбери три задачи на день';
-        else if (hour < 18) reminderEl.innerHTML = '🌤 Хорошего дня — держи фокус';
-        else reminderEl.innerHTML = '🌙 Отличная работа. Пора отдохнуть';
+        const h = new Date().getHours();
+        reminderEl.textContent = h < 12
+            ? 'Доброе утро. Выбери три задачи.'
+            : h < 18
+                ? 'Держи фокус.'
+                : 'Время отдохнуть и наградить себя.';
     }
 
-    if (Notification.permission === 'default') {
-        const panel = document.getElementById('notificationPermission');
-        if (panel) panel.classList.remove('hidden');
-    } else if (Notification.permission === 'granted') {
-        scheduleNotifications();
+    if (typeof Notification !== 'undefined') {
+        if (Notification.permission === 'default') {
+            const panel = document.getElementById('notificationPermission');
+            if (panel) panel.classList.remove('hidden');
+        } else if (Notification.permission === 'granted') {
+            scheduleNotifications();
+        }
     }
 }
 
 // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
-// FIX #1: используем touchend + click без дублирования через passive listener pattern
-function bindButton(id, handler) {
-    const btn = document.getElementById(id);
-    if (!btn) return;
-    let tapped = false;
-
-    btn.addEventListener('touchend', e => {
-        e.preventDefault();
-        if (tapped) return;
-        tapped = true;
-        handler(e);
-        setTimeout(() => { tapped = false; }, 400);
-    }, { passive: false });
-
-    btn.addEventListener('click', e => {
-        e.preventDefault();
-        if (tapped) return;   // уже отработал touchend
-        handler(e);
-    });
-}
-
 function initEventHandlers() {
     // --- Вход ---
-    bindButton('doLoginBtn', () => {
-        const username = document.getElementById('loginUsername')?.value || '';
-        const password = document.getElementById('loginPassword')?.value || '';
-        if (login(username, password)) routeAfterAuth();
-    });
+    const loginBtn = document.getElementById('doLoginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            const username = document.getElementById('loginUsername')?.value?.trim() || '';
+            const password = document.getElementById('loginPassword')?.value || '';
+            if (login(username, password)) routeAfterLogin();
+        });
+    }
 
     // --- Регистрация ---
-    bindButton('doRegisterBtn', () => {
-        const username = document.getElementById('regUsername')?.value || '';
-        const email    = document.getElementById('regEmail')?.value || '';
-        const password = document.getElementById('regPassword')?.value || '';
-        if (register(username, email, password)) {
-            document.getElementById('regError').textContent = '';
-            document.querySelector('.auth-tab[data-tab="login"]')?.click();
-            ['regUsername','regEmail','regPassword'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-        }
-    });
+    const registerBtn = document.getElementById('doRegisterBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => {
+            const username = document.getElementById('regUsername')?.value?.trim() || '';
+            const email = document.getElementById('regEmail')?.value?.trim() || '';
+            const password = document.getElementById('regPassword')?.value || '';
+            if (register(username, email, password)) {
+                // Переключить на вкладку входа
+                document.querySelectorAll('.nav-text-link').forEach(l => l.classList.remove('active'));
+                const loginLink = document.querySelector('.nav-text-link[data-tab="login"]');
+                if (loginLink) loginLink.classList.add('active');
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                const loginForm = document.getElementById('loginForm');
+                if (loginForm) loginForm.classList.add('active');
+                // Предзаполнить логин
+                const loginUsernameEl = document.getElementById('loginUsername');
+                if (loginUsernameEl) loginUsernameEl.value = username;
+                // Очистить форму регистрации
+                ['regUsername', 'regEmail', 'regPassword'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+                document.getElementById('regError').textContent = '';
+            }
+        });
+    }
 
-    // --- FIX #1 + #2: кнопка "Продолжить" (имя) ---
-    bindButton('saveNameBtn', () => {
-        const val = document.getElementById('userNameInput')?.value?.trim();
-        if (val) {
-            saveUserName(val);
-            showScreen('notificationsSetupScreen');
-        } else {
-            alert('Пожалуйста, введите ваше имя');
-        }
-    });
+    // --- Сохранить имя ---
+    const saveNameBtn = document.getElementById('saveNameBtn');
+    if (saveNameBtn) {
+        saveNameBtn.addEventListener('click', () => {
+            const name = document.getElementById('userNameInput')?.value?.trim() || '';
+            if (name) {
+                saveUserName(name);
+                showScreen('notificationsSetupScreen');
+            } else {
+                alert('Пожалуйста, введите ваше имя');
+            }
+        });
+    }
 
-    // --- FIX #1: кнопка "Сохранить" (уведомления) — главная проблема мобильного ---
-    bindButton('saveNotificationsBtn', () => {
-        const morning = document.getElementById('morningTime')?.value || '09:00';
-        const evening = document.getElementById('eveningTime')?.value || '20:00';
-        saveNotificationTimes(morning, evening);
-    });
+    // --- Сохранить уведомления ---
+    // ИСПРАВЛЕНИЕ: убран touchend, используется только click с type="button"
+    const saveNotifBtn = document.getElementById('saveNotificationsBtn');
+    if (saveNotifBtn) {
+        saveNotifBtn.addEventListener('click', () => {
+            const morning = document.getElementById('morningTime')?.value || '09:00';
+            const evening = document.getElementById('eveningTime')?.value || '20:00';
+            saveNotificationTimes(morning, evening);
+        });
+    }
 
-    // --- Выход ---
-    bindButton('logoutBtn', () => {
-        currentUser = null;
-        localStorage.removeItem('mind_currentUser');
-        showScreen('authScreen');
-    });
+    // --- Выйти ---
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            localStorage.removeItem('mind_currentUser');
+            showScreen('authScreen');
+        });
+    }
 
     // --- Уведомления ---
-    bindButton('allowNotificationsBtn', () => requestNotifications());
-    bindButton('denyNotificationsBtn', () => {
-        document.getElementById('notificationPermission')?.classList.add('hidden');
+    const allowBtn = document.getElementById('allowNotificationsBtn');
+    if (allowBtn) allowBtn.addEventListener('click', requestNotifications);
+
+    const denyBtn = document.getElementById('denyNotificationsBtn');
+    if (denyBtn) {
+        denyBtn.addEventListener('click', () => {
+            const panel = document.getElementById('notificationPermission');
+            if (panel) panel.classList.add('hidden');
+        });
+    }
+
+    // --- Enter в полях ---
+    document.getElementById('loginPassword')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('doLoginBtn')?.click();
+    });
+    document.getElementById('loginUsername')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('loginPassword')?.focus();
+    });
+    document.getElementById('userNameInput')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('saveNameBtn')?.click();
     });
 }
 
@@ -577,10 +540,8 @@ function initEventHandlers() {
 function init() {
     setupAuthTabs();
     initEventHandlers();
-
-    // FIX #2: если пользователь уже авторизован и полностью настроен — сразу в приложение
     if (currentUser) {
-        routeAfterAuth();
+        routeAfterLogin();
     } else {
         showScreen('authScreen');
     }
