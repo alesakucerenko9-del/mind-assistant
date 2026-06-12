@@ -3,66 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mind-ассистент | Планер осознанной продуктивности</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <title>Mind-ассистент | Осознанная продуктивность</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <div class="app-container">
-        <!-- Левый сайдбар (как в трекере) -->
+<div class="app-container" id="app">
+    <!-- Экран регистрации/входа -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-card">
+            <div class="logo-icon">🧠</div>
+            <h1>Mind-ассистент</h1>
+            <p>Осознанная продуктивность</p>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Вход</button>
+                <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+            <div id="loginForm" class="auth-form active">
+                <input type="text" id="loginUsername" placeholder="Логин">
+                <input type="password" id="loginPassword" placeholder="Пароль">
+                <button id="doLoginBtn">Войти</button>
+                <p class="auth-error" id="loginError"></p>
+            </div>
+            <div id="registerForm" class="auth-form">
+                <input type="text" id="regUsername" placeholder="Логин">
+                <input type="email" id="regEmail" placeholder="Email">
+                <input type="password" id="regPassword" placeholder="Пароль">
+                <button id="doRegisterBtn">Зарегистрироваться</button>
+                <p class="auth-error" id="regError"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основное приложение (после входа) -->
+    <div id="mainApp" class="main-app hidden">
+        <!-- Левый сайдбар -->
         <aside class="sidebar">
             <div class="logo">
                 <span class="logo-icon">🧠</span>
                 <span class="logo-text">Mind<br>ассистент</span>
             </div>
             <nav class="nav">
-                <a href="#" class="nav-link active">Планер</a>
-                <a href="#" class="nav-link">Прогресс</a>
-                <a href="#" class="nav-link">Награды</a>
-                <a href="#" class="nav-link">Отдых</a>
+                <a href="#" class="nav-link active" data-page="planner">📋 Планер</a>
+                <a href="#" class="nav-link" data-page="progress">📊 Прогресс</a>
+                <a href="#" class="nav-link" data-page="rewards">🏆 Награды</a>
+                <a href="#" class="nav-link" data-page="rest">🌿 Отдых</a>
             </nav>
+            <div class="user-info">
+                <div class="user-name" id="userNameDisplay"></div>
+                <button id="logoutBtn" class="logout-btn">Выйти</button>
+            </div>
             <div class="sidebar-footer">
-                <div class="daily-reminder">
-                    🌿 сегодня ты <br> сделала достаточно
+                <div class="daily-reminder" id="dailyReminder">
+                    🌿 сегодня ты сделала достаточно
                 </div>
             </div>
         </aside>
 
         <!-- Основной контент -->
-        <main class="main-content">
-            <!-- Шапка с прогрессом -->
-            <header class="tracker-header">
-                <h1>Осознанная продуктивность</h1>
-                <p>Три задачи на день → маленькая радость → отдых без вины</p>
-                <div class="global-progress">
-                    <div class="progress-info">
-                        <span>Общий прогресс дня</span>
-                        <span id="globalPercent">0%</span>
-                    </div>
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" id="globalProgressFill" style="width: 0%;"></div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Сетка задач (как блоки курса) -->
-            <div class="tasks-grid" id="tasksGrid">
-                <!-- Задачи будут добавлены через JS -->
-            </div>
-
-            <!-- Боковая панель наград (как в оригинале) -->
-            <div class="reward-panel" id="rewardPanel">
-                <div class="reward-icon">🎁</div>
-                <h3>Награда за фокус</h3>
-                <p id="rewardText">Выполни все задачи дня</p>
-                <button id="claimRewardBtn" class="reward-btn" disabled>Забрать награду</button>
-            </div>
+        <main class="main-content" id="mainContent">
+            <!-- Сюда будет подставляться содержимое страниц -->
         </main>
     </div>
+</div>
 
-    <script src="script.js"></script>
+<!-- Разрешение уведомлений -->
+<div id="notificationPermission" class="notification-prompt hidden">
+    <div class="notification-card">
+        <p>🔔 Хотите получать утренние и вечерние напоминания?</p>
+        <button id="allowNotificationsBtn">Да, разрешить</button>
+        <button id="denyNotificationsBtn">Не сейчас</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
