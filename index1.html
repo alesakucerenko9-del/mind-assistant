@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind-ассистент | Осознанная продуктивность</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="app-container" id="app">
+
+    <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
+    <div id="authScreen" class="screen auth-screen">
+        <div class="auth-card">
+            <span class="logo-icon">🧠</span>
+            <h1>Mind-ассистент</h1>
+            <p>Осознанная продуктивность</p>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Вход</button>
+                <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+            <div id="loginForm" class="auth-form active">
+                <input type="text" id="loginUsername" placeholder="Логин" autocomplete="username">
+                <input type="password" id="loginPassword" placeholder="Пароль" autocomplete="current-password">
+                <button id="doLoginBtn" type="button">Войти</button>
+                <p class="auth-error" id="loginError"></p>
+            </div>
+            <div id="registerForm" class="auth-form">
+                <input type="text" id="regUsername" placeholder="Логин" autocomplete="username">
+                <input type="email" id="regEmail" placeholder="Email" autocomplete="email">
+                <input type="password" id="regPassword" placeholder="Пароль" autocomplete="new-password">
+                <button id="doRegisterBtn" type="button">Зарегистрироваться</button>
+                <p class="auth-error" id="regError"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 2: НАСТРОЙКА ИМЕНИ (только при первом входе) -->
+    <div id="nameSetupScreen" class="screen setup-screen hidden">
+        <div class="setup-card">
+            <span class="setup-icon">👋</span>
+            <h2>Как к вам обращаться?</h2>
+            <p>Введите ваше имя — это единственный раз</p>
+            <input type="text" id="userNameInput" placeholder="Например: Алеся" autocomplete="given-name">
+            <button id="saveNameBtn" type="button">Продолжить</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 3: НАСТРОЙКА УВЕДОМЛЕНИЙ (только при первом входе) -->
+    <div id="notificationsSetupScreen" class="screen setup-screen hidden">
+        <div class="setup-card">
+            <span class="setup-icon">🔔</span>
+            <h2>Время напоминаний</h2>
+            <p>Настройте один раз — больше не спросим</p>
+            <p style="font-size:12px; color:var(--sand); margin-bottom:8px; text-align:left; margin-top:4px;">Утреннее напоминание</p>
+            <input type="time" id="morningTime" value="09:00">
+            <p style="font-size:12px; color:var(--sand); margin-bottom:8px; text-align:left;">Вечернее напоминание</p>
+            <input type="time" id="eveningTime" value="20:00">
+            <button id="saveNotificationsBtn" type="button">Сохранить и начать</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 4: ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+    <div id="mainApp" class="screen main-app hidden">
+        <aside class="sidebar">
+            <div class="sidebar-top">
+                <div class="logo">
+                    <div class="logo-eyebrow">Планер</div>
+                    <div class="logo-text">Mind<span class="logo-accent">—</span>ассистент</div>
+                </div>
+                <button class="mobile-nav-toggle" id="mobileNavToggle" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+            <nav class="nav" id="sidebarNav">
+                <a href="#" class="nav-link active" data-page="planner">
+                    <span class="nav-icon">📋</span> Планер
+                </a>
+                <a href="#" class="nav-link" data-page="progress">
+                    <span class="nav-icon">📊</span> Прогресс
+                </a>
+                <a href="#" class="nav-link" data-page="rewards">
+                    <span class="nav-icon">🏆</span> Награды
+                </a>
+                <a href="#" class="nav-link" data-page="rest">
+                    <span class="nav-icon">🌿</span> Отдых
+                </a>
+            </nav>
+            <div class="sidebar-bottom" id="sidebarBottom">
+                <div class="user-name" id="userNameDisplay"></div>
+                <div class="user-meta">Активный пользователь</div>
+                <button id="logoutBtn" class="logout-btn" type="button">Выйти</button>
+                <div class="daily-reminder" id="dailyReminder"></div>
+            </div>
+        </aside>
+        <main class="main-content" id="mainContent">
+            <!-- Содержимое страниц подставляется динамически -->
+        </main>
+    </div>
+</div>
+
+<!-- ЗАПРОС УВЕДОМЛЕНИЙ -->
+<div id="notificationPermission" class="notification-prompt hidden">
+    <div class="notification-card">
+        <p>🔔 Разрешить утренние и вечерние напоминания?</p>
+        <div class="notification-card-btns">
+            <button id="allowNotificationsBtn" type="button">Разрешить</button>
+            <button id="denyNotificationsBtn" type="button">Позже</button>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
