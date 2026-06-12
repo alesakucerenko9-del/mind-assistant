@@ -8,7 +8,8 @@ function saveCurrentUser() { localStorage.setItem('mind_currentUser', JSON.strin
 // ========== ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ ==========
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    document.getElementById(screenId).classList.remove('hidden');
+    const targetScreen = document.getElementById(screenId);
+    if (targetScreen) targetScreen.classList.remove('hidden');
 }
 
 // ========== ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ВХОДОМ И РЕГИСТРАЦИЕЙ ==========
@@ -43,7 +44,8 @@ function setupAuthTabs() {
 // ========== РЕГИСТРАЦИЯ И ВХОД ==========
 function register(username, email, password) {
     if (users.find(u => u.username === username)) {
-        document.getElementById('regError').textContent = 'Пользователь уже существует';
+        const errorEl = document.getElementById('regError');
+        if (errorEl) errorEl.textContent = 'Пользователь уже существует';
         return false;
     }
     const newUser = {
@@ -66,7 +68,8 @@ function register(username, email, password) {
 function login(username, password) {
     const user = users.find(u => u.username === username && u.password === password);
     if (!user) {
-        document.getElementById('loginError').textContent = 'Неверный логин или пароль';
+        const errorEl = document.getElementById('loginError');
+        if (errorEl) errorEl.textContent = 'Неверный логин или пароль';
         return false;
     }
     currentUser = user;
@@ -76,17 +79,19 @@ function login(username, password) {
 
 // ========== НАСТРОЙКА ПРОФИЛЯ ==========
 function saveUserName(name) {
+    if (!currentUser) return;
     currentUser.name = name;
     saveCurrentUser();
 }
 
 function saveNotificationTimes(morning, evening) {
+    if (!currentUser) return;
     currentUser.notificationTimeMorning = morning;
     currentUser.notificationTimeEvening = evening;
     currentUser.isProfileSetup = true;
     saveCurrentUser();
     scheduleNotifications();
-    // Принудительно переходим в приложение после сохранения
+    // Переход в главное приложение
     startMainApp();
 }
 
@@ -94,7 +99,8 @@ function saveNotificationTimes(morning, evening) {
 function requestNotifications() {
     Notification.requestPermission().then(perm => {
         if (perm === 'granted') scheduleNotifications();
-        document.getElementById('notificationPermission').classList.add('hidden');
+        const notifPanel = document.getElementById('notificationPermission');
+        if (notifPanel) notifPanel.classList.add('hidden');
     });
 }
 
@@ -111,14 +117,14 @@ function scheduleNotifications() {
         const now = new Date();
         const [targetHour, targetMin] = targetTime.split(':').map(Number);
         const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, targetMin);
-        const delay = target - now;
+        let delay = target - now;
         
-        if (delay > 0) {
-            setTimeout(() => sendNotification(title, body), delay);
-        } else {
+        if (delay < 0) {
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, targetHour, targetMin);
-            setTimeout(() => sendNotification(title, body), tomorrow - now);
+            delay = tomorrow - now;
         }
+        
+        setTimeout(() => sendNotification(title, body), delay);
     }
     
     scheduleAt(currentUser.notificationTimeMorning, 'Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
@@ -128,19 +134,19 @@ function scheduleNotifications() {
 // ========== ЗАДАЧИ ==========
 const MAX_TASKS_PER_DAY = 3;
 const REWARD_PLACEHOLDERS = [
-    "🍵 Выпить горячий чай",
-    "📖 Почитать любимую книгу 15 минут",
-    "🎵 Послушать любимый плейлист",
-    "🚶‍♀️ Прогуляться на свежем воздухе",
-    "🍫 Съесть что-то вкусное",
-    "📝 Написать три приятных события дня",
-    "🧘‍♀️ Сделать лёгкую растяжку",
-    "💆‍♀️ Сделать самомассаж",
-    "🎬 Посмотреть любимый сериал"
+    "Выпить горячий чай",
+    "Почитать любимую книгу 15 минут",
+    "Послушать любимый плейлист",
+    "Прогуляться на свежем воздухе",
+    "Съесть что-то вкусное",
+    "Написать три приятных события дня",
+    "Сделать лёгкую растяжку",
+    "Сделать самомассаж",
+    "Посмотреть любимый сериал"
 ];
 
 function addTask(title) {
-    if (!title.trim()) return;
+    if (!title || !title.trim()) return;
     
     if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
         alert(`Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном!`);
@@ -181,14 +187,10 @@ function deleteTask(taskId) {
             currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
         }
         saveCurrentUser();
-        // ОСТАЁМСЯ НА СТРАНИЦЕ ПЛАНЕРА
-        const plannerLink = document.querySelector('.nav-link[data-page="planner"]');
-        if (plannerLink) {
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            plannerLink.classList.add('active');
-        }
-        renderPlanner();
-        renderRewards(); // обновляем награды в фоне
+        // Обновляем страницу наград в фоне
+        renderRewards();
+        // Перерисовываем текущую страницу (Планер)
+        renderCurrentPage();
     }
 }
 
@@ -215,6 +217,8 @@ function toggleRewardClaim(taskId) {
 // ========== ОТРИСОВКА СТРАНИЦ ==========
 function renderPlanner() {
     const container = document.getElementById('mainContent');
+    if (!container) return;
+    
     const completedCount = currentUser.tasks.filter(t => t.completed).length;
     const percent = currentUser.tasks.length ? Math.round((completedCount / currentUser.tasks.length) * 100) : 0;
     const remainingSlots = MAX_TASKS_PER_DAY - currentUser.tasks.length;
@@ -240,11 +244,16 @@ function renderPlanner() {
                 <button id="addTaskBtn">Добавить</button>
             </div>
         `;
-        document.getElementById('addTaskBtn')?.addEventListener('click', () => {
-            const input = document.getElementById('newTaskTitle');
-            addTask(input.value);
-            input.value = '';
-        });
+        const addBtn = document.getElementById('addTaskBtn');
+        const taskInput = document.getElementById('newTaskTitle');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                if (taskInput) {
+                    addTask(taskInput.value);
+                    taskInput.value = '';
+                }
+            });
+        }
         return;
     }
     
@@ -267,7 +276,7 @@ function renderPlanner() {
                     </div>
                     <div class="reward-input-wrapper" style="position: relative;">
                         <input type="text" class="task-reward-input" placeholder="Моя награда за эту задачу..." value="${escapeHtml(task.reward)}" data-id="${task.id}" style="${task.reward && task.reward.trim() ? 'background: #fff8e1; border-color: #ffb74d;' : ''}">
-                        <div class="reward-placeholder-tooltip" style="display: none; position: absolute; top: -40px; left: 0; background: #333; color: #ccc; font-size: 12px; font-style: italic; padding: 6px 12px; border-radius: 8px; white-space: nowrap; z-index: 100;">
+                        <div class="reward-placeholder-tooltip" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; background: #333; color: #ccc; font-size: 12px; font-style: italic; padding: 6px 12px; border-radius: 8px; white-space: nowrap; z-index: 100;">
                             💡 Например: ${REWARD_PLACEHOLDERS.slice(0, 3).join(', ')}
                         </div>
                     </div>
@@ -295,7 +304,6 @@ function renderPlanner() {
                 e.target.style.borderColor = '';
             }
         });
-        // Подсказка при наведении
         const wrapper = inp.closest('.reward-input-wrapper');
         const tooltip = wrapper?.querySelector('.reward-placeholder-tooltip');
         if (tooltip) {
@@ -306,19 +314,24 @@ function renderPlanner() {
     document.querySelectorAll('.delete-task-btn').forEach(btn => {
         btn.addEventListener('click', (e) => deleteTask(parseInt(e.target.dataset.id)));
     });
-    document.getElementById('addTaskBtn')?.addEventListener('click', () => {
-        const input = document.getElementById('newTaskTitle');
-        if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
-            alert(`Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном!`);
-            return;
-        }
-        addTask(input.value);
-        input.value = '';
-    });
+    const addBtn = document.getElementById('addTaskBtn');
+    const taskInput = document.getElementById('newTaskTitle');
+    if (addBtn && taskInput) {
+        addBtn.addEventListener('click', () => {
+            if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
+                alert(`Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном!`);
+                return;
+            }
+            addTask(taskInput.value);
+            taskInput.value = '';
+        });
+    }
 }
 
 function renderProgress() {
     const container = document.getElementById('mainContent');
+    if (!container) return;
+    
     const total = currentUser.tasks.length;
     const completed = currentUser.tasks.filter(t => t.completed).length;
     const percent = total ? Math.round((completed / total) * 100) : 0;
@@ -343,6 +356,8 @@ function renderProgress() {
 
 function renderRewards() {
     const container = document.getElementById('mainContent');
+    if (!container) return;
+    
     const tasksWithRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim() !== '');
     
     if (tasksWithRewards.length === 0) {
@@ -411,6 +426,8 @@ const restTips = [
 
 function renderRest() {
     const container = document.getElementById('mainContent');
+    if (!container) return;
+    
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
@@ -438,12 +455,15 @@ function renderCurrentPage() {
 
 function setupNavigation() {
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
+        link.removeEventListener('click', link._handler);
+        const handler = (e) => {
             e.preventDefault();
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             renderCurrentPage();
-        });
+        };
+        link._handler = handler;
+        link.addEventListener('click', handler);
     });
 }
 
@@ -452,14 +472,18 @@ function startMainApp() {
     showScreen('mainApp');
     setupNavigation();
     renderCurrentPage();
-    document.getElementById('userNameDisplay').textContent = currentUser.name || currentUser.username;
+    const userNameSpan = document.getElementById('userNameDisplay');
+    if (userNameSpan) userNameSpan.textContent = currentUser.name || currentUser.username;
     const hour = new Date().getHours();
     const reminderEl = document.getElementById('dailyReminder');
-    if (hour < 12) reminderEl.innerHTML = 'Доброе утро! Выбери три задачи на день';
-    else if (hour < 18) reminderEl.innerHTML = 'Хорошего дня! Держи фокус';
-    else reminderEl.innerHTML = 'Отличная работа! Пора отдохнуть и наградить себя';
+    if (reminderEl) {
+        if (hour < 12) reminderEl.innerHTML = 'Доброе утро! Выбери три задачи на день';
+        else if (hour < 18) reminderEl.innerHTML = 'Хорошего дня! Держи фокус';
+        else reminderEl.innerHTML = 'Отличная работа! Пора отдохнуть и наградить себя';
+    }
     if (Notification.permission === 'default') {
-        document.getElementById('notificationPermission').classList.remove('hidden');
+        const notifPanel = document.getElementById('notificationPermission');
+        if (notifPanel) notifPanel.classList.remove('hidden');
     } else if (Notification.permission === 'granted') {
         scheduleNotifications();
     }
@@ -467,67 +491,92 @@ function startMainApp() {
 
 // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
 function initEventHandlers() {
-    document.getElementById('doLoginBtn').addEventListener('click', () => {
-        const username = document.getElementById('loginUsername').value;
-        const password = document.getElementById('loginPassword').value;
-        if (login(username, password)) {
-            if (!currentUser.name) {
-                showScreen('nameSetupScreen');
-            } else if (!currentUser.isProfileSetup) {
-                showScreen('notificationsSetupScreen');
-            } else {
-                startMainApp();
+    const loginBtn = document.getElementById('doLoginBtn');
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            const username = document.getElementById('loginUsername')?.value || '';
+            const password = document.getElementById('loginPassword')?.value || '';
+            if (login(username, password)) {
+                if (!currentUser.name) {
+                    showScreen('nameSetupScreen');
+                } else if (!currentUser.isProfileSetup) {
+                    showScreen('notificationsSetupScreen');
+                } else {
+                    startMainApp();
+                }
             }
-        }
-    });
+        });
+    }
     
-    document.getElementById('doRegisterBtn').addEventListener('click', () => {
-        const username = document.getElementById('regUsername').value;
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
-        if (register(username, email, password)) {
-            document.getElementById('regError').textContent = '';
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector('.auth-tab[data-tab="login"]').classList.add('active');
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            document.getElementById('loginForm').classList.add('active');
-            document.getElementById('regUsername').value = '';
-            document.getElementById('regEmail').value = '';
-            document.getElementById('regPassword').value = '';
-        }
-    });
+    const registerBtn = document.getElementById('doRegisterBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => {
+            const username = document.getElementById('regUsername')?.value || '';
+            const email = document.getElementById('regEmail')?.value || '';
+            const password = document.getElementById('regPassword')?.value || '';
+            if (register(username, email, password)) {
+                const regError = document.getElementById('regError');
+                if (regError) regError.textContent = '';
+                const loginTab = document.querySelector('.auth-tab[data-tab="login"]');
+                if (loginTab) loginTab.click();
+                const regUsername = document.getElementById('regUsername');
+                const regEmail = document.getElementById('regEmail');
+                const regPassword = document.getElementById('regPassword');
+                if (regUsername) regUsername.value = '';
+                if (regEmail) regEmail.value = '';
+                if (regPassword) regPassword.value = '';
+            }
+        });
+    }
     
-    document.getElementById('saveNameBtn').addEventListener('click', () => {
-        const name = document.getElementById('userNameInput').value;
-        if (name.trim()) {
-            saveUserName(name.trim());
-            showScreen('notificationsSetupScreen');
-        }
-    });
+    const saveNameBtn = document.getElementById('saveNameBtn');
+    if (saveNameBtn) {
+        saveNameBtn.addEventListener('click', () => {
+            const nameInput = document.getElementById('userNameInput');
+            const name = nameInput?.value || '';
+            if (name.trim()) {
+                saveUserName(name.trim());
+                showScreen('notificationsSetupScreen');
+            }
+        });
+    }
     
     const saveNotificationsBtn = document.getElementById('saveNotificationsBtn');
     if (saveNotificationsBtn) {
-        // Удаляем старые обработчики, чтобы избежать дублирования
+        // Убираем старые обработчики
         const newBtn = saveNotificationsBtn.cloneNode(true);
-        saveNotificationsBtn.parentNode.replaceChild(newBtn, saveNotificationsBtn);
+        saveNotificationsBtn.parentNode?.replaceChild(newBtn, saveNotificationsBtn);
         newBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            const morning = document.getElementById('morningTime').value;
-            const evening = document.getElementById('eveningTime').value;
+            const morningInput = document.getElementById('morningTime');
+            const eveningInput = document.getElementById('eveningTime');
+            const morning = morningInput?.value || '09:00';
+            const evening = eveningInput?.value || '20:00';
             saveNotificationTimes(morning, evening);
         });
     }
     
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        currentUser = null;
-        localStorage.removeItem('mind_currentUser');
-        showScreen('authScreen');
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            currentUser = null;
+            localStorage.removeItem('mind_currentUser');
+            showScreen('authScreen');
+        });
+    }
     
-    document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
-    document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
-        document.getElementById('notificationPermission').classList.add('hidden');
-    });
+    const allowBtn = document.getElementById('allowNotificationsBtn');
+    if (allowBtn) {
+        allowBtn.addEventListener('click', requestNotifications);
+    }
+    
+    const denyBtn = document.getElementById('denyNotificationsBtn');
+    if (denyBtn) {
+        denyBtn.addEventListener('click', () => {
+            const notifPanel = document.getElementById('notificationPermission');
+            if (notifPanel) notifPanel.classList.add('hidden');
+        });
+    }
 }
 
 function escapeHtml(text) {
