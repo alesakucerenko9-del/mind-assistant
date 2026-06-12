@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind-ассистент | Планер осознанной продуктивности</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Левый сайдбар (как в трекере) -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">🧠</span>
+                <span class="logo-text">Mind<br>ассистент</span>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-link active">Планер</a>
+                <a href="#" class="nav-link">Прогресс</a>
+                <a href="#" class="nav-link">Награды</a>
+                <a href="#" class="nav-link">Отдых</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="daily-reminder">
+                    🌿 сегодня ты <br> сделала достаточно
+                </div>
+            </div>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Шапка с прогрессом -->
+            <header class="tracker-header">
+                <h1>Осознанная продуктивность</h1>
+                <p>Три задачи на день → маленькая радость → отдых без вины</p>
+                <div class="global-progress">
+                    <div class="progress-info">
+                        <span>Общий прогресс дня</span>
+                        <span id="globalPercent">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="globalProgressFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Сетка задач (как блоки курса) -->
+            <div class="tasks-grid" id="tasksGrid">
+                <!-- Задачи будут добавлены через JS -->
+            </div>
+
+            <!-- Боковая панель наград (как в оригинале) -->
+            <div class="reward-panel" id="rewardPanel">
+                <div class="reward-icon">🎁</div>
+                <h3>Награда за фокус</h3>
+                <p id="rewardText">Выполни все задачи дня</p>
+                <button id="claimRewardBtn" class="reward-btn" disabled>Забрать награду</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
