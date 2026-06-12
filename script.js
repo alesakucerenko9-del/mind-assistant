@@ -1,4 +1,4 @@
-// ========== ХРАНИЛИЩЕ ==========
+/// ========== ХРАНИЛИЩЕ ==========
 let users = JSON.parse(localStorage.getItem('mind_users')) || [];
 let currentUser = JSON.parse(localStorage.getItem('mind_currentUser')) || null;
 
@@ -52,9 +52,11 @@ function register(username, email, password) {
         email,
         password,
         name: '',
+        isProfileSetup: false,
         notificationTimeMorning: '09:00',
         notificationTimeEvening: '20:00',
-        tasks: []  // ← ПУСТОЙ МАССИВ, пользователь сам добавляет задачи
+        tasks: [],
+        claimedRewards: []
     };
     users.push(newUser);
     saveUsers();
@@ -81,6 +83,7 @@ function saveUserName(name) {
 function saveNotificationTimes(morning, evening) {
     currentUser.notificationTimeMorning = morning;
     currentUser.notificationTimeEvening = evening;
+    currentUser.isProfileSetup = true;
     saveCurrentUser();
     scheduleNotifications();
 }
@@ -121,8 +124,17 @@ function scheduleNotifications() {
 }
 
 // ========== ЗАДАЧИ ==========
+const MAX_TASKS_PER_DAY = 3;  // ← ОГРАНИЧЕНИЕ: максимум 3 задачи в день
+
 function addTask(title) {
     if (!title.trim()) return;
+    
+    // Проверка лимита
+    if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
+        alert(`⚠️ Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном! 🎯`);
+        return;
+    }
+    
     currentUser.tasks.push({
         id: Date.now(),
         title: title.trim(),
@@ -153,9 +165,33 @@ function updateTaskReward(taskId, rewardText) {
 function deleteTask(taskId) {
     if (confirm('Удалить эту задачу?')) {
         currentUser.tasks = currentUser.tasks.filter(t => t.id !== taskId);
+        if (currentUser.claimedRewards) {
+            currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
+        }
         saveCurrentUser();
         renderPlanner();
+        renderRewards();
     }
+}
+
+// ========== НАГРАДЫ ==========
+function toggleRewardClaim(taskId) {
+    const task = currentUser.tasks.find(t => t.id === taskId);
+    if (!task || !task.reward || task.reward.trim() === '') {
+        alert('✨ Сначала пропишите награду за эту задачу в разделе "Планер"');
+        return;
+    }
+    
+    if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
+    
+    if (currentUser.claimedRewards.includes(taskId)) {
+        currentUser.claimedRewards = currentUser.claimedRewards.filter(id => id !== taskId);
+    } else {
+        currentUser.claimedRewards.push(taskId);
+        alert(`🎉 Поздравляю! Ты забрала награду: ${task.reward} 🎉`);
+    }
+    saveCurrentUser();
+    renderRewards();
 }
 
 // ========== ОТРИСОВКА СТРАНИЦ ==========
@@ -163,12 +199,13 @@ function renderPlanner() {
     const container = document.getElementById('mainContent');
     const completedCount = currentUser.tasks.filter(t => t.completed).length;
     const percent = currentUser.tasks.length ? Math.round((completedCount / currentUser.tasks.length) * 100) : 0;
+    const remainingSlots = MAX_TASKS_PER_DAY - currentUser.tasks.length;
     
     if (currentUser.tasks.length === 0) {
         container.innerHTML = `
             <div class="page-header">
                 <h2>📋 Планер дня</h2>
-                <div class="greeting">🍃 ${currentUser.name || currentUser.username}, добавь свои первые задачи!</div>
+                <div class="greeting">🍃 ${currentUser.name || currentUser.username}, добавь свои первые задачи!<br><span style="font-size: 14px; color: #ff9800;">🎯 Сфокусируйся на 3 сегодня</span></div>
             </div>
             <div class="progress-block">
                 <div class="progress-label"><span>Прогресс дня</span><span>0%</span></div>
@@ -178,6 +215,7 @@ function renderPlanner() {
                 <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
                 <p style="color: #6b6b6b;">У вас пока нет задач</p>
                 <p style="color: #9e9e9e; font-size: 14px;">Добавьте первую задачу ниже</p>
+                <p style="color: #ff9800; font-size: 13px; margin-top: 16px;">⭐ Можно добавить до ${MAX_TASKS_PER_DAY} задач в день</p>
             </div>
             <div class="add-task-form">
                 <input type="text" id="newTaskTitle" placeholder="➕ Новая задача...">
@@ -195,7 +233,7 @@ function renderPlanner() {
     container.innerHTML = `
         <div class="page-header">
             <h2>📋 Планер дня</h2>
-            <div class="greeting">🍃 ${currentUser.name || currentUser.username}, вот твои задачи на сегодня</div>
+            <div class="greeting">🍃 ${currentUser.name || currentUser.username}, вот твои задачи на сегодня<br><span style="font-size: 14px; color: #ff9800;">🎯 Сфокусируйся на ${remainingSlots > 0 ? `ещё ${remainingSlots}` : 'всех'} задачах</span></div>
         </div>
         <div class="progress-block">
             <div class="progress-label"><span>Прогресс дня</span><span>${percent}%</span></div>
@@ -203,20 +241,21 @@ function renderPlanner() {
         </div>
         <div class="tasks-list">
             ${currentUser.tasks.map(task => `
-                <div class="task-card ${task.completed ? 'completed' : ''}">
+                <div class="task-card ${task.completed ? 'completed' : ''}" style="${task.completed ? 'background: #e8f5e9; border-color: #4caf50; box-shadow: 0 2px 8px rgba(76,175,80,0.2);' : ''}">
                     <div class="task-header">
                         <input type="checkbox" class="task-check" ${task.completed ? 'checked' : ''} data-id="${task.id}">
                         <span class="task-title">${escapeHtml(task.title)}</span>
                         <button class="delete-task-btn" data-id="${task.id}" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #e53935;">🗑️</button>
                     </div>
-                    <input type="text" class="task-reward-input" placeholder="Моя награда за эту задачу..." value="${escapeHtml(task.reward)}" data-id="${task.id}">
+                    <input type="text" class="task-reward-input" placeholder="Моя награда за эту задачу..." value="${escapeHtml(task.reward)}" data-id="${task.id}" style="${task.reward && task.reward.trim() ? 'background: #fff8e1; border-color: #ffb74d;' : ''}">
                 </div>
             `).join('')}
         </div>
         <div class="add-task-form">
-            <input type="text" id="newTaskTitle" placeholder="➕ Новая задача...">
-            <button id="addTaskBtn">Добавить</button>
+            <input type="text" id="newTaskTitle" placeholder="➕ Новая задача..." ${remainingSlots <= 0 ? 'disabled style="opacity: 0.5;"' : ''}>
+            <button id="addTaskBtn" ${remainingSlots <= 0 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>Добавить</button>
         </div>
+        ${remainingSlots <= 0 ? '<p style="text-align: center; margin-top: 16px; color: #ff9800; font-size: 14px;">⭐ Ты достигла лимита на сегодня (3 задачи). Завтра будет новый день!</p>' : `<p style="text-align: center; margin-top: 16px; color: #9e9e9e; font-size: 13px;">⭐ Можно добавить ещё ${remainingSlots} задачу(и) из ${MAX_TASKS_PER_DAY}</p>`}
     `;
     
     document.querySelectorAll('.task-check').forEach(cb => {
@@ -224,12 +263,25 @@ function renderPlanner() {
     });
     document.querySelectorAll('.task-reward-input').forEach(inp => {
         inp.addEventListener('change', (e) => updateTaskReward(parseInt(e.target.dataset.id), e.target.value));
+        inp.addEventListener('input', (e) => {
+            if (e.target.value.trim()) {
+                e.target.style.background = '#fff8e1';
+                e.target.style.borderColor = '#ffb74d';
+            } else {
+                e.target.style.background = '';
+                e.target.style.borderColor = '';
+            }
+        });
     });
     document.querySelectorAll('.delete-task-btn').forEach(btn => {
         btn.addEventListener('click', (e) => deleteTask(parseInt(e.target.dataset.id)));
     });
     document.getElementById('addTaskBtn')?.addEventListener('click', () => {
         const input = document.getElementById('newTaskTitle');
+        if (currentUser.tasks.length >= MAX_TASKS_PER_DAY) {
+            alert(`⚠️ Ты можешь добавить максимум ${MAX_TASKS_PER_DAY} задачи в день.\n\nСфокусируйся на главном! 🎯`);
+            return;
+        }
         addTask(input.value);
         input.value = '';
     });
@@ -241,14 +293,16 @@ function renderProgress() {
     const completed = currentUser.tasks.filter(t => t.completed).length;
     const percent = total ? Math.round((completed / total) * 100) : 0;
     const rewardsFilled = currentUser.tasks.filter(t => t.reward && t.reward.trim()).length;
+    const claimedCount = currentUser.claimedRewards ? currentUser.claimedRewards.length : 0;
     
     container.innerHTML = `
         <div class="page-header"><h2>📊 Твой прогресс</h2></div>
         <div class="stats-grid">
-            <div class="stat-card"><div class="stat-number">${total}</div><div>Всего задач</div></div>
+            <div class="stat-card"><div class="stat-number">${total} / ${MAX_TASKS_PER_DAY}</div><div>Задач на сегодня</div></div>
             <div class="stat-card"><div class="stat-number">${completed}</div><div>Выполнено</div></div>
             <div class="stat-card"><div class="stat-number">${percent}%</div><div>Эффективность</div></div>
             <div class="stat-card"><div class="stat-number">${rewardsFilled}</div><div>Наград назначено</div></div>
+            <div class="stat-card"><div class="stat-number">${claimedCount}</div><div>Наград получено</div></div>
         </div>
         <div class="progress-block">
             <div class="progress-label"><span>Общий прогресс</span><span>${percent}%</span></div>
@@ -259,30 +313,58 @@ function renderProgress() {
 
 function renderRewards() {
     const container = document.getElementById('mainContent');
-    // Получаем все задачи, у которых есть награда (НЕ только выполненные, а все, где прописана награда)
     const tasksWithRewards = currentUser.tasks.filter(t => t.reward && t.reward.trim() !== '');
+    
+    if (tasksWithRewards.length === 0) {
+        container.innerHTML = `
+            <div class="page-header"><h2>🏆 Мои награды</h2></div>
+            <div style="text-align: center; padding: 60px; background: #f8fafc; border-radius: 24px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">🎁</div>
+                <p style="color: #6b6b6b;">Пока нет наград</p>
+                <p style="color: #9e9e9e; font-size: 14px;">Добавь награду к каждой задаче в разделе "Планер"</p>
+            </div>
+        `;
+        return;
+    }
     
     container.innerHTML = `
         <div class="page-header"><h2>🏆 Мои награды</h2></div>
         <div class="rewards-list">
-            ${tasksWithRewards.length ? tasksWithRewards.map(t => `
-                <div class="reward-item">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <strong>🎯 ${escapeHtml(t.title)}</strong>
-                        <span style="font-size: 12px; padding: 4px 12px; border-radius: 20px; background: ${t.completed ? '#c8e6c9' : '#fff3e0'};">
-                            ${t.completed ? '✓ Выполнено' : '○ В процессе'}
-                        </span>
+            ${tasksWithRewards.map(task => {
+                const isClaimed = currentUser.claimedRewards && currentUser.claimedRewards.includes(task.id);
+                return `
+                    <div class="reward-item ${isClaimed ? 'claimed' : ''}" style="${isClaimed ? 'background: #e8f5e9; border-color: #4caf50;' : ''}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>🎯 ${escapeHtml(task.title)}</strong>
+                            <span style="font-size: 12px; padding: 4px 12px; border-radius: 20px; background: ${task.completed ? '#c8e6c9' : '#fff3e0'};">
+                                ${task.completed ? '✓ Выполнено' : '○ В процессе'}
+                            </span>
+                        </div>
+                        <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 16px;">
+                            🎁 Награда: ${escapeHtml(task.reward)}
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <label class="reward-check-label" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" class="reward-claim-check" data-id="${task.id}" ${isClaimed ? 'checked' : ''} ${!task.completed ? 'disabled' : ''}>
+                                <span>${isClaimed ? '✓ Награда получена!' : 'Забрать награду'}</span>
+                            </label>
+                            ${!task.completed ? '<p style="font-size: 12px; color: #ff9800; margin-top: 8px;">⚠️ Сначала выполните задачу</p>' : ''}
+                        </div>
                     </div>
-                    <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 16px;">
-                        🎁 Награда: ${escapeHtml(t.reward)}
-                    </div>
-                </div>
-            `).join('') : '<p style="text-align: center; padding: 40px;">Пока нет наград. Добавь награду к каждой задаче в разделе "Планер"!</p>'}
+                `;
+            }).join('')}
         </div>
     `;
+    
+    document.querySelectorAll('.reward-claim-check').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            if (cb.disabled) return;
+            toggleRewardClaim(parseInt(e.target.dataset.id));
+        });
+    });
 }
 
-// Список пожеланий для отдыха (фиксированный, пользователь не меняет)
+// Список пожеланий для отдыха
 const restTips = [
     "🌿 Подыши свежим воздухом 5 минут",
     "☕ Выпей чай без телефона",
@@ -300,7 +382,6 @@ const restTips = [
 
 function renderRest() {
     const container = document.getElementById('mainContent');
-    // Получаем индекс дня в году, чтобы пожелание менялось каждый день
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((now - start) / (1000 * 60 * 60 * 24));
@@ -363,9 +444,13 @@ function initEventHandlers() {
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
         if (login(username, password)) {
-            if (!currentUser.name) showScreen('nameSetupScreen');
-            else if (!currentUser.notificationTimeMorning) showScreen('notificationsSetupScreen');
-            else startMainApp();
+            if (!currentUser.name) {
+                showScreen('nameSetupScreen');
+            } else if (!currentUser.isProfileSetup) {
+                showScreen('notificationsSetupScreen');
+            } else {
+                startMainApp();
+            }
         }
     });
     
@@ -423,12 +508,14 @@ function init() {
     setupAuthTabs();
     initEventHandlers();
     
-    if (currentUser && currentUser.name && currentUser.notificationTimeMorning) {
-        startMainApp();
-    } else if (currentUser && currentUser.name) {
-        showScreen('notificationsSetupScreen');
-    } else if (currentUser) {
-        showScreen('nameSetupScreen');
+    if (currentUser) {
+        if (!currentUser.name) {
+            showScreen('nameSetupScreen');
+        } else if (!currentUser.isProfileSetup) {
+            showScreen('notificationsSetupScreen');
+        } else {
+            startMainApp();
+        }
     } else {
         showScreen('authScreen');
     }
