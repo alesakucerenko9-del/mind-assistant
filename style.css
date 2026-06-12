@@ -10,21 +10,29 @@ body {
     min-height: 100vh;
 }
 
-/* ===== АВТОРИЗАЦИЯ ===== */
-.auth-screen {
+/* ===== ЭКРАНЫ ===== */
+.screen {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    transition: all 0.3s;
 }
 
-.auth-card {
+.screen.hidden {
+    display: none;
+}
+
+/* ===== АВТОРИЗАЦИЯ ===== */
+.auth-screen {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+}
+
+.auth-card, .setup-card {
     background: white;
     border-radius: 48px;
     padding: 48px 40px;
@@ -34,20 +42,20 @@ body {
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
 }
 
-.auth-card .logo-icon {
+.auth-card .logo-icon, .setup-icon {
     font-size: 56px;
     margin-bottom: 16px;
 }
 
-.auth-card h1 {
+.auth-card h1, .setup-card h2 {
     font-size: 32px;
     color: #2e7d32;
     margin-bottom: 8px;
 }
 
-.auth-card p {
+.auth-card p, .setup-card p {
     color: #6b6b6b;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .auth-tabs {
@@ -67,7 +75,6 @@ body {
     border-radius: 60px;
     font-weight: 600;
     cursor: pointer;
-    transition: 0.2s;
 }
 
 .auth-tab.active {
@@ -85,14 +92,14 @@ body {
     display: flex;
 }
 
-.auth-form input {
+.auth-form input, .setup-card input {
     padding: 14px 18px;
     border: 1px solid #ddd;
     border-radius: 60px;
     font-size: 15px;
 }
 
-.auth-form button {
+.auth-form button, .setup-card button {
     background: #2e7d32;
     color: white;
     border: none;
@@ -106,11 +113,11 @@ body {
 .auth-error {
     color: #e53935;
     font-size: 13px;
-    margin-top: 8px;
 }
 
 /* ===== ОСНОВНОЕ ПРИЛОЖЕНИЕ ===== */
 .main-app {
+    position: relative;
     display: flex;
     min-height: 100vh;
 }
@@ -158,6 +165,7 @@ body {
     color: #5c6f87;
     font-weight: 500;
     transition: all 0.2s;
+    cursor: pointer;
 }
 
 .nav-link:hover {
@@ -201,7 +209,7 @@ body {
     overflow-y: auto;
 }
 
-/* ===== СТРАНИЦА ПЛАНЕРА ===== */
+/* ===== СТРАНИЦЫ ===== */
 .page-header {
     margin-bottom: 32px;
 }
@@ -261,7 +269,6 @@ body {
     border: 1px solid #e0e8e0;
     border-radius: 20px;
     padding: 16px;
-    transition: all 0.2s;
 }
 
 .task-card.completed {
@@ -302,11 +309,6 @@ body {
     margin-top: 8px;
 }
 
-.task-reward-input:focus {
-    outline: none;
-    border-color: #4caf50;
-}
-
 .add-task-form {
     display: flex;
     gap: 12px;
@@ -330,10 +332,9 @@ body {
     cursor: pointer;
 }
 
-/* ===== СТРАНИЦА ПРОГРЕССА ===== */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
     margin-bottom: 32px;
 }
@@ -351,7 +352,6 @@ body {
     color: #2e7d32;
 }
 
-/* ===== СТРАНИЦА НАГРАД ===== */
 .rewards-list {
     display: flex;
     flex-direction: column;
@@ -365,7 +365,6 @@ body {
     border: 1px solid #ffe082;
 }
 
-/* ===== СТРАНИЦА ОТДЫХА ===== */
 .rest-card {
     text-align: center;
     background: #e8f5e9;
@@ -378,6 +377,16 @@ body {
     font-style: italic;
     color: #2e7d32;
     margin: 24px 0;
+}
+
+.rest-card button {
+    background: #2e7d32;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 40px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
 /* ===== УВЕДОМЛЕНИЯ ===== */
@@ -402,13 +411,13 @@ body {
     border-radius: 40px;
     border: none;
     cursor: pointer;
+    margin-right: 8px;
 }
 
 .hidden {
     display: none;
 }
 
-/* Адаптивность */
 @media (max-width: 768px) {
     .main-app {
         flex-direction: column;

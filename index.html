@@ -10,8 +10,8 @@
 <body>
 
 <div class="app-container" id="app">
-    <!-- Экран регистрации/входа -->
-    <div id="authScreen" class="auth-screen">
+    <!-- ЭКРАН 1: РЕГИСТРАЦИЯ / ВХОД -->
+    <div id="authScreen" class="screen auth-screen">
         <div class="auth-card">
             <div class="logo-icon">🧠</div>
             <h1>Mind-ассистент</h1>
@@ -36,9 +36,32 @@
         </div>
     </div>
 
-    <!-- Основное приложение (после входа) -->
-    <div id="mainApp" class="main-app hidden">
-        <!-- Левый сайдбар -->
+    <!-- ЭКРАН 2: НАСТРОЙКА ИМЕНИ -->
+    <div id="nameSetupScreen" class="screen setup-screen hidden">
+        <div class="setup-card">
+            <div class="setup-icon">👋</div>
+            <h2>Как к вам обращаться?</h2>
+            <p>Введите ваше имя</p>
+            <input type="text" id="userNameInput" placeholder="Например: Алеся">
+            <button id="saveNameBtn">Продолжить</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 3: НАСТРОЙКА УВЕДОМЛЕНИЙ -->
+    <div id="notificationsSetupScreen" class="screen setup-screen hidden">
+        <div class="setup-card">
+            <div class="setup-icon">🔔</div>
+            <h2>Настройка уведомлений</h2>
+            <p>В какое время получать утреннее напоминание?</p>
+            <input type="time" id="morningTime" value="09:00">
+            <p>В какое время получать вечернее напоминание?</p>
+            <input type="time" id="eveningTime" value="20:00">
+            <button id="saveNotificationsBtn">Сохранить</button>
+        </div>
+    </div>
+
+    <!-- ЭКРАН 4: ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+    <div id="mainApp" class="screen main-app hidden">
         <aside class="sidebar">
             <div class="logo">
                 <span class="logo-icon">🧠</span>
@@ -60,18 +83,16 @@
                 </div>
             </div>
         </aside>
-
-        <!-- Основной контент -->
         <main class="main-content" id="mainContent">
-            <!-- Сюда будет подставляться содержимое страниц -->
+            <!-- Содержимое страниц подставляется динамически -->
         </main>
     </div>
 </div>
 
-<!-- Разрешение уведомлений -->
+<!-- ЗАПРОС УВЕДОМЛЕНИЙ -->
 <div id="notificationPermission" class="notification-prompt hidden">
     <div class="notification-card">
-        <p>🔔 Хотите получать утренние и вечерние напоминания?</p>
+        <p>🔔 Получать утренние и вечерние напоминания?</p>
         <button id="allowNotificationsBtn">Да, разрешить</button>
         <button id="denyNotificationsBtn">Не сейчас</button>
     </div>

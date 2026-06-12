@@ -1,42 +1,14 @@
-// ========== ХРАНИЛИЩЕ ПОЛЬЗОВАТЕЛЕЙ ==========
+// ========== ХРАНИЛИЩЕ ==========
 let users = JSON.parse(localStorage.getItem('mind_users')) || [];
 let currentUser = JSON.parse(localStorage.getItem('mind_currentUser')) || null;
 
-// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-function saveUsers() {
-    localStorage.setItem('mind_users', JSON.stringify(users));
-}
+function saveUsers() { localStorage.setItem('mind_users', JSON.stringify(users)); }
+function saveCurrentUser() { localStorage.setItem('mind_currentUser', JSON.stringify(currentUser)); }
 
-function saveCurrentUser() {
-    localStorage.setItem('mind_currentUser', JSON.stringify(currentUser));
-}
-
-// ========== АВТОРИЗАЦИЯ ==========
-function showAuthScreen() {
-    document.getElementById('authScreen').classList.remove('hidden');
-    document.getElementById('mainApp').classList.add('hidden');
-}
-
-function showMainApp() {
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    renderCurrentPage();
-    updateUserDisplay();
-    checkAndAskNotifications();
-}
-
-function updateUserDisplay() {
-    if (currentUser) {
-        document.getElementById('userNameDisplay').textContent = currentUser.name || currentUser.username;
-        // Утреннее/вечернее приветствие
-        const reminderEl = document.getElementById('dailyReminder');
-        if (reminderEl) {
-            const hour = new Date().getHours();
-            if (hour < 12) reminderEl.innerHTML = '☀️ Доброе утро! Выбери три задачи на день';
-            else if (hour < 18) reminderEl.innerHTML = '🌤️ Хорошего дня! Держи фокус';
-            else reminderEl.innerHTML = '🌙 Отличная работа! Пора отдохнуть и наградить себя';
-        }
-    }
+// ========== ПЕРЕКЛЮЧЕНИЕ ЭКРАНОВ ==========
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    document.getElementById(screenId).classList.remove('hidden');
 }
 
 // ========== РЕГИСТРАЦИЯ И ВХОД ==========
@@ -57,9 +29,7 @@ function register(username, email, password) {
             { id: 1, title: 'Сформулировать 3 главные задачи на день', completed: false, reward: '' },
             { id: 2, title: 'Выполнить первую задачу до обеда', completed: false, reward: '' },
             { id: 3, title: 'Завершить день практикой отдыха', completed: false, reward: '' }
-        ],
-        rewardsHistory: [],
-        completedHistory: []
+        ]
     };
     users.push(newUser);
     saveUsers();
@@ -77,44 +47,23 @@ function login(username, password) {
     return true;
 }
 
-// ========== НАСТРОЙКА ИМЕНИ И УВЕДОМЛЕНИЙ ==========
-function askUserNameAndNotifications() {
-    if (currentUser.name && currentUser.name !== '') return;
-    
-    const name = prompt('Добро пожаловать! Как вас зовут?', currentUser.username);
-    if (name && name.trim()) {
-        currentUser.name = name.trim();
-        saveCurrentUser();
-    }
-    
-    const morningTime = prompt('Введите время для утреннего напоминания (например, 09:00):', currentUser.notificationTimeMorning || '09:00');
-    if (morningTime && morningTime.match(/^\d{2}:\d{2}$/)) {
-        currentUser.notificationTimeMorning = morningTime;
-    }
-    
-    const eveningTime = prompt('Введите время для вечернего напоминания (например, 20:00):', currentUser.notificationTimeEvening || '20:00');
-    if (eveningTime && eveningTime.match(/^\d{2}:\d{2}$/)) {
-        currentUser.notificationTimeEvening = eveningTime;
-    }
-    
+// ========== НАСТРОЙКА ПРОФИЛЯ ==========
+function saveUserName(name) {
+    currentUser.name = name;
+    saveCurrentUser();
+}
+
+function saveNotificationTimes(morning, evening) {
+    currentUser.notificationTimeMorning = morning;
+    currentUser.notificationTimeEvening = evening;
     saveCurrentUser();
     scheduleNotifications();
 }
 
 // ========== УВЕДОМЛЕНИЯ ==========
-function checkAndAskNotifications() {
-    if (Notification.permission === 'default') {
-        document.getElementById('notificationPermission').classList.remove('hidden');
-    } else if (Notification.permission === 'granted') {
-        scheduleNotifications();
-    }
-}
-
 function requestNotifications() {
     Notification.requestPermission().then(perm => {
-        if (perm === 'granted') {
-            scheduleNotifications();
-        }
+        if (perm === 'granted') scheduleNotifications();
         document.getElementById('notificationPermission').classList.add('hidden');
     });
 }
@@ -128,36 +77,34 @@ function sendNotification(title, body) {
 function scheduleNotifications() {
     if (!currentUser || Notification.permission !== 'granted') return;
     
-    function checkAndSend(targetTime, title, body) {
+    function scheduleAt(targetTime, title, body) {
         const now = new Date();
         const [targetHour, targetMin] = targetTime.split(':').map(Number);
         const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, targetMin);
+        const delay = target - now;
         
-        if (now >= target) {
-            sendNotification(title, body);
-            return true;
+        if (delay > 0) {
+            setTimeout(() => sendNotification(title, body), delay);
+        } else {
+            // На завтра
+            const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, targetHour, targetMin);
+            setTimeout(() => sendNotification(title, body), tomorrow - now);
         }
-        return false;
     }
     
-    const morningSent = checkAndSend(currentUser.notificationTimeMorning, '🌅 Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
-    const eveningSent = checkAndSend(currentUser.notificationTimeEvening, '🌙 Время отдохнуть!', `${currentUser.name}, ты отлично поработала. Награди себя и отдохни.`);
-    
-    // Запланировать на завтра, если сегодня уже поздно
-    if (!morningSent) setTimeout(() => scheduleNotifications(), 60000);
-    if (!eveningSent) setTimeout(() => scheduleNotifications(), 60000);
+    scheduleAt(currentUser.notificationTimeMorning, '🌅 Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
+    scheduleAt(currentUser.notificationTimeEvening, '🌙 Время отдохнуть!', `${currentUser.name}, ты отлично поработала. Награди себя и отдохни.`);
 }
 
-// ========== УПРАВЛЕНИЕ ЗАДАЧАМИ ==========
+// ========== ЗАДАЧИ ==========
 function addTask(title) {
     if (!title.trim()) return;
-    const newTask = {
+    currentUser.tasks.push({
         id: Date.now(),
         title: title.trim(),
         completed: false,
         reward: ''
-    };
-    currentUser.tasks.push(newTask);
+    });
     saveCurrentUser();
     renderPlanner();
 }
@@ -192,13 +139,8 @@ function renderPlanner() {
             <div class="greeting">🍃 ${currentUser.name || currentUser.username}, вот твои задачи на сегодня</div>
         </div>
         <div class="progress-block">
-            <div class="progress-label">
-                <span>Прогресс дня</span>
-                <span>${percent}%</span>
-            </div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: ${percent}%;"></div>
-            </div>
+            <div class="progress-label"><span>Прогресс дня</span><span>${percent}%</span></div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${percent}%;"></div></div>
         </div>
         <div class="tasks-list">
             ${currentUser.tasks.map(task => `
@@ -267,28 +209,20 @@ function renderRewards() {
 
 function renderRest() {
     const container = document.getElementById('mainContent');
-    const tips = [
-        'Подыши свежим воздухом 5 минут',
-        'Выпей чай без телефона',
-        'Сделай лёгкую растяжку',
-        'Послушай любимую музыку',
-        'Ничего не делай — это тоже отдых'
-    ];
+    const tips = ['Подыши свежим воздухом 5 минут', 'Выпей чай без телефона', 'Сделай лёгкую растяжку', 'Послушай любимую музыку', 'Ничего не делай — это тоже отдых'];
     const randomTip = tips[Math.floor(Math.random() * tips.length)];
-    
     container.innerHTML = `
         <div class="page-header"><h2>🌿 Практика отдыха</h2></div>
         <div class="rest-card">
             <div class="rest-tip">✨ ${randomTip} ✨</div>
             <p>Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p>
-            <button id="refreshTipBtn" class="btn-add" style="margin-top: 24px;">Другой совет</button>
+            <button id="refreshTipBtn">Другой совет</button>
         </div>
     `;
     document.getElementById('refreshTipBtn')?.addEventListener('click', renderRest);
 }
 
 function renderCurrentPage() {
-    if (!currentUser) return;
     const activeLink = document.querySelector('.nav-link.active');
     const page = activeLink?.dataset.page || 'planner';
     if (page === 'planner') renderPlanner();
@@ -297,7 +231,6 @@ function renderCurrentPage() {
     else if (page === 'rest') renderRest();
 }
 
-// ========== ОБРАБОТЧИКИ НАВИГАЦИИ ==========
 function setupNavigation() {
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -309,60 +242,79 @@ function setupNavigation() {
     });
 }
 
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
-function init() {
-    // Вкладки авторизации
-    document.querySelectorAll('.auth-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-            document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
-        });
-    });
-    
-    document.getElementById('doLoginBtn').addEventListener('click', () => {
-        const username = document.getElementById('loginUsername').value;
-        const password = document.getElementById('loginPassword').value;
-        if (login(username, password)) {
-            askUserNameAndNotifications();
-            showMainApp();
-            setupNavigation();
-            renderCurrentPage();
-        }
-    });
-    
-    document.getElementById('doRegisterBtn').addEventListener('click', () => {
-        const username = document.getElementById('regUsername').value;
-        const email = document.getElementById('regEmail').value;
-        const password = document.getElementById('regPassword').value;
-        if (register(username, email, password)) {
-            document.getElementById('regError').textContent = '';
-            document.querySelector('.auth-tab[data-tab="login"]').click();
-        }
-    });
-    
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
-        currentUser = null;
-        localStorage.removeItem('mind_currentUser');
-        showAuthScreen();
-    });
-    
-    document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
-    document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
-        document.getElementById('notificationPermission').classList.add('hidden');
-    });
-    
-    if (currentUser) {
-        showMainApp();
-        setupNavigation();
-        renderCurrentPage();
-        updateUserDisplay();
-        checkAndAskNotifications();
-    } else {
-        showAuthScreen();
+// ========== ЗАПУСК ПРИЛОЖЕНИЯ ==========
+function startMainApp() {
+    showScreen('mainApp');
+    setupNavigation();
+    renderCurrentPage();
+    document.getElementById('userNameDisplay').textContent = currentUser.name || currentUser.username;
+    const hour = new Date().getHours();
+    const reminderEl = document.getElementById('dailyReminder');
+    if (hour < 12) reminderEl.innerHTML = '☀️ Доброе утро! Выбери три задачи на день';
+    else if (hour < 18) reminderEl.innerHTML = '🌤️ Хорошего дня! Держи фокус';
+    else reminderEl.innerHTML = '🌙 Отличная работа! Пора отдохнуть и наградить себя';
+    if (Notification.permission === 'default') {
+        document.getElementById('notificationPermission').classList.remove('hidden');
+    } else if (Notification.permission === 'granted') {
+        scheduleNotifications();
     }
 }
+
+// ========== ОБРАБОТЧИКИ ==========
+document.getElementById('doLoginBtn').addEventListener('click', () => {
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    if (login(username, password)) {
+        if (!currentUser.name) showScreen('nameSetupScreen');
+        else if (!currentUser.notificationTimeMorning) showScreen('notificationsSetupScreen');
+        else startMainApp();
+    }
+});
+
+document.getElementById('doRegisterBtn').addEventListener('click', () => {
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    if (register(username, email, password)) {
+        document.getElementById('regError').textContent = '';
+        document.querySelector('.auth-tab[data-tab="login"]').click();
+    }
+});
+
+document.getElementById('saveNameBtn').addEventListener('click', () => {
+    const name = document.getElementById('userNameInput').value;
+    if (name.trim()) {
+        saveUserName(name.trim());
+        showScreen('notificationsSetupScreen');
+    }
+});
+
+document.getElementById('saveNotificationsBtn').addEventListener('click', () => {
+    const morning = document.getElementById('morningTime').value;
+    const evening = document.getElementById('eveningTime').value;
+    saveNotificationTimes(morning, evening);
+    startMainApp();
+});
+
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    currentUser = null;
+    localStorage.removeItem('mind_currentUser');
+    showScreen('authScreen');
+});
+
+document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
+document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
+    document.getElementById('notificationPermission').classList.add('hidden');
+});
+
+document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
+    });
+});
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -370,4 +322,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-init();
+// Старт
+if (currentUser && currentUser.name && currentUser.notificationTimeMorning) startMainApp();
+else if (currentUser && currentUser.name) showScreen('notificationsSetupScreen');
+else if (currentUser) showScreen('nameSetupScreen');
+else showScreen('authScreen');
