@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mind-ассистент | Осознанная продуктивность</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ===== НОВАЯ ЦВЕТОВАЯ СХЕМА: белый, светло-зелёный, нежно-розовый ===== */
+:root {
+  --bg:          #FEFBF7;
+  --surface:     #FFFFFF;
+  --sidebar-bg:  #F2F8F0;
+  --sidebar-txt: #2E4A2B;
+  --sidebar-sub: #7C9A78;
+  --accent:      #E8A9A9;
+  --accent-soft: #FCE4E4;
+  --accent-green:#B5D3A8;
+  --accent-green-light: #E6F3E0;
+  --text:        #2C3E2A;
+  --text-sub:    #6B8A68;
+  --success:     #8CC084;
+  --success-bg:  #EFF7EC;
+  --warn:        #E8A9A9;
+  --warn-bg:     #FEF4F4;
+  --border:      #E8E5DE;
+  --radius:      18px;
+  --radius-sm:   12px;
+  --shadow:      0 6px 18px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.02);
+  --shadow-card: 0 12px 28px rgba(0,0,0,0.05);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+.screen { min-height: 100dvh; }
+
+/* ===== АВТОРИЗАЦИЯ ===== */
+.auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, var(--bg) 0%, var(--accent-green-light) 100%);
+  padding: 24px;
+}
+
+.auth-card {
+  background: var(--surface);
+  border-radius: 40px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.12);
+}
+
+.auth-logo {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent) 100%);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 24px;
+  box-shadow: 0 8px 18px rgba(184, 148, 148, 0.15);
+}
+
+.auth-card h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+
+.auth-card > p {
+  color: var(--text-sub);
+  font-size: 13px;
+  margin-bottom: 32px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: var(--bg);
+  border-radius: 60px;
+  padding: 5px;
+  margin-bottom: 28px;
+  gap: 6px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-tab.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.auth-form { display: none; flex-direction: column; gap: 14px; }
+.auth-form.active { display: flex; }
+
+.auth-form input {
+  padding: 14px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  font-size: 14px;
+  background: var(--bg);
+  transition: border 0.2s;
+}
+.auth-form input:focus { border-color: var(--accent); outline: none; background: white; }
+
+.auth-form button {
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent) 100%);
+  color: var(--text);
+  font-weight: 700;
+  border: none;
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 6px;
+  transition: all 0.2s;
+}
+.auth-form button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.auth-error { font-size: 12px; color: var(--warn); margin-top: 4px; min-height: 20px; }
+
+/* ===== НАСТРОЙКИ (ОНБОРДИНГ) ===== */
+.setup-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, var(--bg) 0%, var(--accent-green-light) 100%);
+  padding: 24px;
+}
+
+.setup-card {
+  background: var(--surface);
+  border-radius: 40px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.12);
+}
+
+.setup-icon { font-size: 48px; display: block; margin-bottom: 20px; }
+.setup-card h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.setup-card > p { color: var(--text-sub); font-size: 14px; margin-bottom: 28px; }
+.setup-card .time-label {
+  display: block; text-align: left; font-size: 12px; font-weight: 600;
+  margin: 20px 0 6px; color: var(--text-sub);
+}
+.setup-card input {
+  width: 100%; padding: 14px 18px; border: 1.5px solid var(--border);
+  border-radius: 28px; font-size: 15px; background: var(--bg);
+}
+.setup-card input:focus { border-color: var(--accent); outline: none; background: white; }
+.setup-card button {
+  width: 100%; padding: 15px; margin-top: 28px;
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent) 100%);
+  border: none; border-radius: 40px; font-weight: 700; color: var(--text);
+  cursor: pointer; transition: all 0.2s;
+}
+.setup-card button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* ===== ОСНОВНОЙ ИНТЕРФЕЙС (ЛЕГКИЙ, ВОЗДУШНЫЙ) ===== */
+.main-app { display: flex; min-height: 100dvh; background: var(--bg); }
+
+/* САЙДБАР */
+.sidebar {
+  width: 260px;
+  background: var(--sidebar-bg);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  padding: 32px 20px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  border-right: 1px solid rgba(170, 190, 150, 0.3);
+}
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 28px; border-bottom: 1px solid rgba(130, 150, 110, 0.2);
+  margin-bottom: 28px;
+}
+.logo-icon-box {
+  width: 42px; height: 42px;
+  background: linear-gradient(145deg, var(--accent-green), var(--accent));
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.logo-text {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 600; color: var(--sidebar-txt);
+}
+
+.nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.nav-link {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-radius: 16px; font-size: 14px; font-weight: 500;
+  color: var(--sidebar-sub); text-decoration: none; transition: all 0.2s;
+  cursor: pointer;
+}
+.nav-link:hover { background: rgba(170, 190, 150, 0.2); color: var(--sidebar-txt); }
+.nav-link.active { background: var(--accent-soft); color: var(--text); }
+.nav-icon { font-size: 20px; width: 26px; text-align: center; }
+
+.sidebar-bottom {
+  padding-top: 24px; border-top: 1px solid rgba(130, 150, 110, 0.2);
+  margin-top: 20px;
+}
+.user-block {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+}
+.user-avatar {
+  width: 40px; height: 40px; background: var(--accent-green);
+  border-radius: 60px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: var(--text);
+}
+.user-name-txt { font-size: 14px; font-weight: 600; color: var(--sidebar-txt); }
+.logout-btn {
+  width: 100%; padding: 10px; background: transparent;
+  border: 1px solid var(--border); border-radius: 30px; color: var(--text-sub);
+  font-size: 13px; cursor: pointer; transition: all 0.2s;
+}
+.logout-btn:hover { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.daily-reminder {
+  margin-top: 20px; font-size: 12px; color: var(--sidebar-sub);
+  font-style: italic; text-align: center; background: rgba(255,255,240,0.6);
+  padding: 12px; border-radius: 24px;
+}
+
+/* ОСНОВНОЙ КОНТЕНТ */
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 48px 56px;
+  max-width: 860px;
+}
+.page-header { margin-bottom: 32px; }
+.page-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px; font-weight: 600; letter-spacing: -0.4px;
+  margin-bottom: 8px; color: var(--text);
+}
+.greeting { font-size: 15px; color: var(--text-sub); }
+.greeting-accent { color: var(--warn); font-weight: 500; }
+
+/* ПРОГРЕСС */
+.progress-block {
+  background: var(--surface); border-radius: 28px; padding: 22px 26px;
+  margin-bottom: 28px; box-shadow: var(--shadow-card);
+  border: 1px solid rgba(200,180,160,0.15);
+}
+.progress-label {
+  display: flex; justify-content: space-between; font-size: 12px; font-weight: 600;
+  color: var(--text-sub); margin-bottom: 12px; text-transform: uppercase;
+}
+.progress-bar-bg { height: 6px; background: var(--border); border-radius: 10px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, var(--accent-green), var(--accent));
+  border-radius: 10px; transition: width 0.3s;
+}
+
+/* КАРТОЧКИ ЗАДАЧ */
+.tasks-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+.task-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 28px;
+  padding: 20px 24px; transition: all 0.2s; box-shadow: var(--shadow);
+}
+.task-card.completed { background: var(--success-bg); border-color: var(--accent-green); }
+.task-header { display: flex; align-items: center; gap: 14px; }
+.task-check { width: 22px; height: 22px; accent-color: var(--success); cursor: pointer; }
+.task-title { flex: 1; font-size: 16px; font-weight: 500; }
+.delete-task-btn {
+  background: none; border: none; color: var(--border); font-size: 20px;
+  cursor: pointer; padding: 4px; border-radius: 12px;
+}
+.delete-task-btn:hover { color: var(--warn); background: var(--accent-soft); }
+.task-reward-input {
+  width: 100%; margin-top: 16px; padding: 12px 16px;
+  border: 1px solid var(--border); border-radius: 40px;
+  font-size: 13px; background: var(--bg); transition: 0.2s;
+}
+.task-reward-input:focus { border-color: var(--accent); outline: none; background: white; }
+.task-reward-input.has-value { background: var(--warn-bg); border-color: var(--accent); }
+
+/* ДОБАВЛЕНИЕ ЗАДАЧИ */
+.add-task-form {
+  display: flex; gap: 12px; margin-top: 16px;
+}
+.add-task-form input {
+  flex: 1; padding: 14px 20px; border: 1px solid var(--border);
+  border-radius: 60px; font-size: 14px; background: var(--surface);
+}
+.add-task-form button {
+  padding: 14px 28px; background: linear-gradient(135deg, var(--accent-green), var(--accent));
+  border: none; border-radius: 60px; font-weight: 600; cursor: pointer;
+  color: var(--text); transition: all 0.2s;
+}
+.add-task-form button:hover { opacity: 0.9; transform: scale(0.97); }
+.task-limit-note { text-align: center; font-size: 12px; margin-top: 18px; color: var(--text-sub); }
+.task-limit-warn { color: var(--warn); font-weight: 500; }
+
+/* СТАТИСТИКА */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px; margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--surface); border-radius: 28px; padding: 24px 16px;
+  text-align: center; box-shadow: var(--shadow-card);
+}
+.stat-number {
+  font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 600;
+  color: var(--text); margin-bottom: 6px;
+}
+.stat-label { font-size: 12px; color: var(--text-sub); text-transform: uppercase; }
+
+/* НАГРАДЫ */
+.rewards-list { display: flex; flex-direction: column; gap: 16px; }
+.reward-item {
+  background: var(--surface); border-radius: 28px; padding: 22px 26px;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.reward-item.claimed { background: var(--success-bg); border-color: var(--accent-green); }
+.reward-task-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.reward-status-badge {
+  display: inline-block; font-size: 11px; padding: 3px 12px; border-radius: 30px;
+  margin-bottom: 14px; font-weight: 600;
+}
+.badge-done { background: var(--accent-green-light); color: #3A6B2F; }
+.badge-pending { background: var(--warn-bg); color: var(--warn); }
+.reward-value {
+  background: var(--bg); border-radius: 24px; padding: 12px 18px;
+  margin-bottom: 16px; font-size: 14px;
+}
+.reward-claim-label {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  font-weight: 500; font-size: 14px;
+}
+.reward-claim-check { width: 20px; height: 20px; accent-color: var(--success); }
+
+/* ОТДЫХ */
+.rest-card {
+  background: var(--surface); border-radius: 40px; padding: 64px 48px;
+  text-align: center; box-shadow: var(--shadow-card);
+}
+.rest-quote {
+  font-family: 'Playfair Display', serif; font-size: 26px; font-style: italic;
+  color: var(--text); margin-bottom: 24px;
+}
+.rest-sub { color: var(--text-sub); margin-bottom: 32px; line-height: 1.6; }
+.rest-meta { font-size: 12px; color: var(--border); letter-spacing: 1px; }
+
+/* ПЛАШКА УВЕДОМЛЕНИЙ */
+.notification-prompt {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 120; width: 90%; max-width: 380px;
+}
+.notification-card {
+  background: var(--surface); border-radius: 28px; padding: 18px 20px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  box-shadow: 0 20px 30px -8px rgba(0,0,0,0.1);
+}
+.notification-card p { flex: 1; font-size: 13px; }
+.notification-card button {
+  padding: 8px 20px; border-radius: 30px; border: none; font-weight: 600;
+  cursor: pointer; transition: 0.2s;
+}
+#allowNotificationsBtn { background: var(--accent-green); color: var(--text); }
+#denyNotificationsBtn { background: var(--accent-soft); color: var(--text-sub); }
+
+/* МОБИЛЬНАЯ АДАПТАЦИЯ */
+.mobile-header {
+  display: none; background: var(--surface); padding: 16px 20px;
+  align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 30; border-bottom: 1px solid var(--border);
+}
+.hamburger {
+  width: 36px; height: 36px; background: transparent; border: none;
+  display: flex; flex-direction: column; gap: 6px; justify-content: center; align-items: center;
+  cursor: pointer;
+}
+.hamburger span { width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.25);
+  z-index: 35; backdrop-filter: blur(3px);
+}
+.mobile-bottom-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface); padding: 12px 16px 20px;
+  justify-content: space-around; border-top: 1px solid var(--border);
+  z-index: 25;
+}
+.mobile-nav-btn {
+  background: none; border: none; display: flex; flex-direction: column;
+  align-items: center; gap: 4px; color: var(--text-sub); font-size: 10px;
+  font-weight: 500; padding: 6px 12px; border-radius: 24px;
+  transition: all 0.2s; cursor: pointer;
+}
+.mobile-nav-btn .nav-icon { font-size: 22px; }
+.mobile-nav-btn.active { color: var(--accent); background: var(--accent-soft); }
+
+@media (max-width: 760px) {
+  .sidebar { transform: translateX(-100%); transition: transform 0.25s; z-index: 40; }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; padding: 24px 20px 100px; }
+  .mobile-header { display: flex; }
+  .mobile-bottom-nav { display: flex; }
+  .sidebar-overlay.open { display: block; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .add-task-form { flex-direction: column; }
+  .rest-quote { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="app-container" id="app">
+
+  <!-- ЭКРАН 1: АВТОРИЗАЦИЯ -->
+  <div id="authScreen" class="screen auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">🧠</div>
+      <h1>Mind-ассистент</h1>
+      <p>Осознанная продуктивность</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Вход</button>
+        <button class="auth-tab" data-tab="register">Регистрация</button>
+      </div>
+      <div id="loginForm" class="auth-form active">
+        <input type="text" id="loginUsername" placeholder="Логин">
+        <input type="password" id="loginPassword" placeholder="Пароль">
+        <button id="doLoginBtn">Войти</button>
+        <p class="auth-error" id="loginError"></p>
+      </div>
+      <div id="registerForm" class="auth-form">
+        <input type="text" id="regUsername" placeholder="Логин">
+        <input type="email" id="regEmail" placeholder="Email">
+        <input type="password" id="regPassword" placeholder="Пароль">
+        <button id="doRegisterBtn">Зарегистрироваться</button>
+        <p class="auth-error" id="regError"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 2: ИМЯ -->
+  <div id="nameSetupScreen" class="screen setup-screen hidden">
+    <div class="setup-card">
+      <span class="setup-icon">👋</span>
+      <h2>Как к вам обращаться?</h2>
+      <p>Введите ваше имя — будем использовать в приложении</p>
+      <input type="text" id="userNameInput" placeholder="Например: Алеся">
+      <button id="saveNameBtn">Продолжить →</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 3: УВЕДОМЛЕНИЯ -->
+  <div id="notificationsSetupScreen" class="screen setup-screen hidden">
+    <div class="setup-card">
+      <span class="setup-icon">🔔</span>
+      <h2>Настройка напоминаний</h2>
+      <p>Когда напоминать о задачах?</p>
+      <span class="time-label">Утреннее напоминание</span>
+      <input type="time" id="morningTime" value="09:00">
+      <span class="time-label">Вечернее напоминание</span>
+      <input type="time" id="eveningTime" value="20:00">
+      <button id="saveNotificationsBtn">Сохранить и начать →</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 4: ПРИЛОЖЕНИЕ -->
+  <div id="mainApp" class="screen main-app hidden">
+    <div class="mobile-header">
+      <span class="mobile-logo">🧠 Mind</span>
+      <button class="hamburger" id="hamburgerBtn"><span></span><span></span><span></span></button>
+    </div>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <div class="logo-icon-box">🧠</div>
+        <span class="logo-text">Mind<br>ассистент</span>
+      </div>
+      <nav class="nav">
+        <a class="nav-link active" data-page="planner"><span class="nav-icon">📋</span> Планер</a>
+        <a class="nav-link" data-page="progress"><span class="nav-icon">📊</span> Прогресс</a>
+        <a class="nav-link" data-page="rewards"><span class="nav-icon">🏆</span> Награды</a>
+        <a class="nav-link" data-page="rest"><span class="nav-icon">🌿</span> Отдых</a>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="user-block">
+          <div class="user-avatar" id="userAvatar">?</div>
+          <div class="user-name-txt" id="userNameDisplay"></div>
+        </div>
+        <button id="logoutBtn" class="logout-btn">Выйти из аккаунта</button>
+        <div class="daily-reminder" id="dailyReminder">🌿 сегодня ты сделала достаточно</div>
+      </div>
+    </aside>
+    <main class="main-content" id="mainContent"></main>
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+      <button class="mobile-nav-btn active" data-page="planner"><span class="nav-icon">📋</span>Планер</button>
+      <button class="mobile-nav-btn" data-page="progress"><span class="nav-icon">📊</span>Прогресс</button>
+      <button class="mobile-nav-btn" data-page="rewards"><span class="nav-icon">🏆</span>Награды</button>
+      <button class="mobile-nav-btn" data-page="rest"><span class="nav-icon">🌿</span>Отдых</button>
+    </nav>
+  </div>
+</div>
+<div id="notificationPermission" class="notification-prompt hidden">
+  <div class="notification-card">
+    <p>🔔 Получать утренние и вечерние напоминания?</p>
+    <button id="allowNotificationsBtn">Разрешить</button>
+    <button id="denyNotificationsBtn">Не сейчас</button>
+  </div>
+</div>
+
+<script>
+// ========== ХРАНИЛИЩЕ ==========
+let users = JSON.parse(localStorage.getItem('mind_users')) || [];
+let currentUser = JSON.parse(localStorage.getItem('mind_currentUser')) || null;
+
+function saveUsers() { localStorage.setItem('mind_users', JSON.stringify(users)); }
+function saveCurrentUser() {
+  localStorage.setItem('mind_currentUser', JSON.stringify(currentUser));
+  const idx = users.findIndex(u => u.id === currentUser.id);
+  if (idx !== -1) { users[idx] = currentUser; saveUsers(); }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+}
+
+function setupAuthTabs() {
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.tab;
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(name + 'Form').classList.add('active');
+    });
+  });
+}
+
+function register(username, email, password) {
+  if (users.find(u => u.username === username)) {
+    document.getElementById('regError').textContent = 'Пользователь уже существует';
+    return false;
+  }
+  users.push({
+    id: Date.now(), username, email, password,
+    name: '', isProfileSetup: false,
+    notificationTimeMorning: '09:00', notificationTimeEvening: '20:00',
+    tasks: [], claimedRewards: []
+  });
+  saveUsers();
+  return true;
+}
+
+function login(username, password) {
+  const user = users.find(u => u.username === username && u.password === password);
+  if (!user) {
+    document.getElementById('loginError').textContent = 'Неверный логин или пароль';
+    return false;
+  }
+  currentUser = user;
+  saveCurrentUser();
+  return true;
+}
+
+function afterLogin() {
+  if (!currentUser.name) showScreen('nameSetupScreen');
+  else if (!currentUser.isProfileSetup) showScreen('notificationsSetupScreen');
+  else startMainApp();
+}
+
+function saveUserName(name) { currentUser.name = name; saveCurrentUser(); }
+function saveNotificationTimes(morning, evening) {
+  currentUser.notificationTimeMorning = morning;
+  currentUser.notificationTimeEvening = evening;
+  currentUser.isProfileSetup = true;
+  saveCurrentUser();
+  scheduleNotifications();
+  startMainApp();
+}
+
+function requestNotifications() {
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') scheduleNotifications();
+    document.getElementById('notificationPermission').classList.add('hidden');
+  });
+}
+
+function scheduleNotifications() {
+  if (!currentUser || Notification.permission !== 'granted') return;
+  function scheduleAt(time, title, body) {
+    const now = new Date();
+    let [h, m] = time.split(':').map(Number);
+    let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    setTimeout(() => { if (Notification.permission === 'granted') new Notification(title, { body }); }, target - now);
+  }
+  scheduleAt(currentUser.notificationTimeMorning, 'Доброе утро!', `${currentUser.name}, выбери три фокус-задачи на день.`);
+  scheduleAt(currentUser.notificationTimeEvening, 'Время отдохнуть!', `${currentUser.name}, ты отлично поработала. Награди себя и отдохни.`);
+}
+
+// ========== ЛОГИКА ЗАДАЧ ==========
+const MAX_TASKS = 3;
+function addTask(title) {
+  if (!title.trim()) return;
+  if (currentUser.tasks.length >= MAX_TASKS) { alert(`Максимум ${MAX_TASKS} задачи в день. Сфокусируйся на главном!`); return; }
+  currentUser.tasks.push({ id: Date.now(), title: title.trim(), completed: false, reward: '' });
+  saveCurrentUser();
+  renderPlanner();
+}
+function toggleTask(id) { let t = currentUser.tasks.find(t => t.id === id); if(t) { t.completed = !t.completed; saveCurrentUser(); renderPlanner(); } }
+function updateTaskReward(id, val) { let t = currentUser.tasks.find(t => t.id === id); if(t) { t.reward = val; saveCurrentUser(); } }
+function deleteTask(id) {
+  if (!confirm('Удалить задачу?')) return;
+  currentUser.tasks = currentUser.tasks.filter(t => t.id !== id);
+  currentUser.claimedRewards = (currentUser.claimedRewards || []).filter(r => r !== id);
+  saveCurrentUser();
+  renderCurrentPage();
+}
+function toggleRewardClaim(id) {
+  let t = currentUser.tasks.find(t => t.id === id);
+  if (!t || !t.reward?.trim()) { alert('Сначала пропишите награду в разделе «Планер»'); return; }
+  if (!currentUser.claimedRewards) currentUser.claimedRewards = [];
+  if (currentUser.claimedRewards.includes(id)) currentUser.claimedRewards = currentUser.claimedRewards.filter(r => r !== id);
+  else { currentUser.claimedRewards.push(id); alert(`Поздравляю! Ты забрала награду: ${t.reward}`); }
+  saveCurrentUser();
+  renderRewards();
+}
+
+function escapeHtml(s) { let d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// ========== РЕНДЕР ==========
+function renderPlanner() {
+  let container = document.getElementById('mainContent');
+  if (!container) return;
+  let done = currentUser.tasks.filter(t => t.completed).length;
+  let pct = currentUser.tasks.length ? Math.round(done / currentUser.tasks.length * 100) : 0;
+  let left = MAX_TASKS - currentUser.tasks.length;
+  let name = currentUser.name || currentUser.username;
+  let tasksHtml = currentUser.tasks.length === 0 ? `
+    <div class="empty-state" style="background:white; border-radius:32px; padding:48px; text-align:center">
+      <span style="font-size:48px">📝</span>
+      <p style="margin-top:12px">Пока нет задач</p>
+      <p style="color:var(--text-sub); font-size:13px">Добавьте первую задачу — можно до ${MAX_TASKS} на день</p>
+    </div>` :
+    `<div class="tasks-list">` + currentUser.tasks.map(t => `
+      <div class="task-card ${t.completed ? 'completed' : ''}">
+        <div class="task-header">
+          <input type="checkbox" class="task-check" data-id="${t.id}" ${t.completed ? 'checked' : ''}>
+          <span class="task-title">${escapeHtml(t.title)}</span>
+          <button class="delete-task-btn" data-id="${t.id}">✕</button>
+        </div>
+        <input type="text" class="task-reward-input ${t.reward?.trim() ? 'has-value' : ''}" placeholder="Моя награда за эту задачу…" value="${escapeHtml(t.reward)}" data-id="${t.id}">
+      </div>`).join('') + `</div>`;
+
+  container.innerHTML = `
+    <div class="page-header"><h2>Планер дня</h2><div class="greeting">${name}, вот твои задачи <span class="greeting-accent">${left > 0 ? `➕ ещё ${left} слота` : '🎯 лимит на сегодня'}</span></div></div>
+    <div class="progress-block"><div class="progress-label"><span>Прогресс дня</span><span>${pct}%</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div></div>
+    ${tasksHtml}
+    <div class="add-task-form"><input type="text" id="newTaskTitle" placeholder="Новая задача…" ${left <= 0 ? 'disabled' : ''}><button id="addTaskBtn" ${left <= 0 ? 'disabled' : ''}>Добавить</button></div>
+    <div class="task-limit-note ${left <= 0 ? 'task-limit-warn' : ''}">${left <= 0 ? 'Сегодняшний лимит исчерпан. Завтра новый день!' : `Осталось ${left} из ${MAX_TASKS} задач`}</div>`;
+  container.querySelectorAll('.task-check').forEach(cb => cb.addEventListener('change', e => toggleTask(+e.target.dataset.id)));
+  container.querySelectorAll('.task-reward-input').forEach(inp => { inp.addEventListener('change', e => updateTaskReward(+e.target.dataset.id, e.target.value)); });
+  container.querySelectorAll('.delete-task-btn').forEach(btn => btn.addEventListener('click', e => deleteTask(+e.target.dataset.id)));
+  let addBtn = document.getElementById('addTaskBtn'), inp = document.getElementById('newTaskTitle');
+  if (addBtn && inp) addBtn.addEventListener('click', () => { addTask(inp.value); inp.value = ''; });
+}
+
+function renderProgress() {
+  let container = document.getElementById('mainContent');
+  let total = currentUser.tasks.length, done = currentUser.tasks.filter(t => t.completed).length, pct = total ? Math.round(done/total*100):0, rew = currentUser.tasks.filter(t=>t.reward?.trim()).length, claimed = (currentUser.claimedRewards||[]).length;
+  container.innerHTML = `<div class="page-header"><h2>Твой прогресс</h2></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-number">${total}/${MAX_TASKS}</div><div class="stat-label">Задач сегодня</div></div>
+      <div class="stat-card"><div class="stat-number">${done}</div><div class="stat-label">Выполнено</div></div>
+      <div class="stat-card"><div class="stat-number">${pct}%</div><div class="stat-label">Эффективность</div></div>
+      <div class="stat-card"><div class="stat-number">${rew}</div><div class="stat-label">Наград назначено</div></div>
+      <div class="stat-card"><div class="stat-number">${claimed}</div><div class="stat-label">Наград получено</div></div>
+    </div>
+    <div class="progress-block"><div class="progress-label"><span>Общий прогресс</span><span>${pct}%</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div></div>`;
+}
+
+function renderRewards() {
+  let container = document.getElementById('mainContent');
+  let tasks = currentUser.tasks.filter(t => t.reward?.trim());
+  if (!tasks.length) { container.innerHTML = `<div class="page-header"><h2>Мои награды</h2></div><div class="empty-state" style="background:white; border-radius:32px; padding:48px; text-align:center"><span style="font-size:48px">🎁</span><p>Пока нет наград</p><p style="color:var(--text-sub)">Добавь награду к каждой задаче в планере</p></div>`; return; }
+  container.innerHTML = `<div class="page-header"><h2>Мои награды</h2></div><div class="rewards-list">` + tasks.map(t => { let claimed = (currentUser.claimedRewards||[]).includes(t.id); return `<div class="reward-item ${claimed ? 'claimed' : ''}"><div class="reward-task-name">${escapeHtml(t.title)}</div><span class="reward-status-badge ${t.completed ? 'badge-done' : 'badge-pending'}">${t.completed ? '✓ Выполнено' : '● В процессе'}</span><div class="reward-value">🎁 ${escapeHtml(t.reward)}</div><label class="reward-claim-label"><input type="checkbox" class="reward-claim-check" data-id="${t.id}" ${claimed ? 'checked' : ''} ${!t.completed ? 'disabled' : ''}><span>${claimed ? 'Награда получена!' : 'Забрать награду'}</span></label>${!t.completed ? '<p style="font-size:12px;color:var(--warn);margin-top:8px">Сначала выполните задачу</p>' : ''}</div>`; }).join('') + `</div>`;
+  container.querySelectorAll('.reward-claim-check').forEach(cb => cb.addEventListener('change', e => { if(!cb.disabled) toggleRewardClaim(+e.target.dataset.id); }));
+}
+
+const REST_TIPS = ["Подыши свежим воздухом 5 минут","Выпей чай без телефона","Сделай лёгкую растяжку","Послушай любимую музыку","Ничего не делай — это тоже отдых","Почитай книгу 15 минут","Прогуляйся вокруг дома","Сделай самомассаж лица","Посмотри на звёзды или облака","Напиши три приятных события дня"];
+function renderRest() {
+  let tip = REST_TIPS[Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000) % REST_TIPS.length];
+  document.getElementById('mainContent').innerHTML = `<div class="page-header"><h2>Практика отдыха</h2></div><div class="rest-card"><div class="rest-quote">"${tip}"</div><p class="rest-sub">Ты сделала достаточно за сегодня.<br>Отдыхай без чувства вины.</p><div class="rest-meta">Новый совет каждый день</div></div>`;
+}
+
+function renderCurrentPage() { let active = document.querySelector('.nav-link.active, .mobile-nav-btn.active'); let page = active?.dataset.page || 'planner'; if(page==='planner') renderPlanner(); else if(page==='progress') renderProgress(); else if(page==='rewards') renderRewards(); else if(page==='rest') renderRest(); }
+
+function setupNavigation() {
+  document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', e => { e.preventDefault(); document.querySelectorAll('.nav-link').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.mobile-nav-btn').forEach(b=>b.classList.remove('active')); l.classList.add('active'); let p = l.dataset.page; document.querySelector(`.mobile-nav-btn[data-page="${p}"]`)?.classList.add('active'); renderCurrentPage(); document.getElementById('sidebar')?.classList.remove('open'); document.getElementById('sidebarOverlay')?.classList.remove('open'); }));
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.mobile-nav-btn').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active')); b.classList.add('active'); let p = b.dataset.page; document.querySelector(`.nav-link[data-page="${p}"]`)?.classList.add('active'); renderCurrentPage(); }));
+}
+
+function startMainApp() {
+  showScreen('mainApp'); setupNavigation(); renderCurrentPage();
+  document.getElementById('userNameDisplay').innerText = currentUser.name || currentUser.username;
+  document.getElementById('userAvatar').innerText = (currentUser.name || currentUser.username).charAt(0).toUpperCase();
+  let hour = new Date().getHours(), rem = document.getElementById('dailyReminder');
+  if (rem) rem.innerText = hour < 12 ? '☀️ Доброе утро! Выбери три задачи на день' : hour < 18 ? '🌤 Хорошего дня! Держи фокус' : '🌙 Отличная работа! Пора отдохнуть и наградить себя';
+  if (Notification.permission === 'default') document.getElementById('notificationPermission').classList.remove('hidden');
+  else if (Notification.permission === 'granted') scheduleNotifications();
+}
+
+function initHandlers() {
+  document.getElementById('doLoginBtn').addEventListener('click', () => { let u = document.getElementById('loginUsername').value, p = document.getElementById('loginPassword').value; if(login(u,p)) afterLogin(); });
+  document.getElementById('doRegisterBtn').addEventListener('click', () => { let u = document.getElementById('regUsername').value, e = document.getElementById('regEmail').value, p = document.getElementById('regPassword').value; if(register(u,e,p)) { document.getElementById('regError').innerText = ''; document.querySelector('.auth-tab[data-tab="login"]').click(); } });
+  document.getElementById('saveNameBtn').addEventListener('click', () => { let name = document.getElementById('userNameInput').value.trim(); if(name) { saveUserName(name); showScreen('notificationsSetupScreen'); } else alert('Пожалуйста, введите имя'); });
+  document.getElementById('saveNotificationsBtn').addEventListener('click', () => { let m = document.getElementById('morningTime').value || '09:00', e = document.getElementById('eveningTime').value || '20:00'; saveNotificationTimes(m,e); });
+  document.getElementById('logoutBtn').addEventListener('click', () => { currentUser = null; localStorage.removeItem('mind_currentUser'); showScreen('authScreen'); });
+  document.getElementById('allowNotificationsBtn').addEventListener('click', requestNotifications);
+  document.getElementById('denyNotificationsBtn').addEventListener('click', () => document.getElementById('notificationPermission').classList.add('hidden'));
+  document.getElementById('hamburgerBtn').addEventListener('click', () => { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebarOverlay').classList.add('open'); });
+  document.getElementById('sidebarOverlay').addEventListener('click', () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('open'); });
+}
+
+function init() { setupAuthTabs(); initHandlers(); if(currentUser) afterLogin(); else showScreen('authScreen'); }
+init();
+</script>
+</body>
+</html>
