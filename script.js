@@ -11,6 +11,39 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.remove('hidden');
 }
 
+// ========== ПЕРЕКЛЮЧЕНИЕ МЕЖДУ ВХОДОМ И РЕГИСТРАЦИЕЙ ==========
+function setupAuthTabs() {
+    const tabs = document.querySelectorAll('.auth-tab');
+    const forms = {
+        login: document.getElementById('loginForm'),
+        register: document.getElementById('registerForm')
+    };
+    
+    tabs.forEach(tab => {
+        tab.removeEventListener('click', handleTabClick);
+        tab.addEventListener('click', handleTabClick);
+    });
+    
+    function handleTabClick(e) {
+        const tab = e.currentTarget;
+        const tabName = tab.getAttribute('data-tab');
+        
+        // Убираем active у всех табов
+        tabs.forEach(t => t.classList.remove('active'));
+        // Добавляем active текущему
+        tab.classList.add('active');
+        
+        // Прячем все формы
+        Object.values(forms).forEach(form => {
+            if (form) form.classList.remove('active');
+        });
+        // Показываем нужную форму
+        if (forms[tabName]) {
+            forms[tabName].classList.add('active');
+        }
+    }
+}
+
 // ========== РЕГИСТРАЦИЯ И ВХОД ==========
 function register(username, email, password) {
     if (users.find(u => u.username === username)) {
@@ -86,7 +119,6 @@ function scheduleNotifications() {
         if (delay > 0) {
             setTimeout(() => sendNotification(title, body), delay);
         } else {
-            // На завтра
             const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, targetHour, targetMin);
             setTimeout(() => sendNotification(title, body), tomorrow - now);
         }
@@ -260,61 +292,68 @@ function startMainApp() {
     }
 }
 
-// ========== ОБРАБОТЧИКИ ==========
-document.getElementById('doLoginBtn').addEventListener('click', () => {
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-    if (login(username, password)) {
-        if (!currentUser.name) showScreen('nameSetupScreen');
-        else if (!currentUser.notificationTimeMorning) showScreen('notificationsSetupScreen');
-        else startMainApp();
-    }
-});
-
-document.getElementById('doRegisterBtn').addEventListener('click', () => {
-    const username = document.getElementById('regUsername').value;
-    const email = document.getElementById('regEmail').value;
-    const password = document.getElementById('regPassword').value;
-    if (register(username, email, password)) {
-        document.getElementById('regError').textContent = '';
-        document.querySelector('.auth-tab[data-tab="login"]').click();
-    }
-});
-
-document.getElementById('saveNameBtn').addEventListener('click', () => {
-    const name = document.getElementById('userNameInput').value;
-    if (name.trim()) {
-        saveUserName(name.trim());
-        showScreen('notificationsSetupScreen');
-    }
-});
-
-document.getElementById('saveNotificationsBtn').addEventListener('click', () => {
-    const morning = document.getElementById('morningTime').value;
-    const evening = document.getElementById('eveningTime').value;
-    saveNotificationTimes(morning, evening);
-    startMainApp();
-});
-
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
-    currentUser = null;
-    localStorage.removeItem('mind_currentUser');
-    showScreen('authScreen');
-});
-
-document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
-document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
-    document.getElementById('notificationPermission').classList.add('hidden');
-});
-
-document.querySelectorAll('.auth-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-        document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
+// ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+function initEventHandlers() {
+    // Вход
+    document.getElementById('doLoginBtn').addEventListener('click', () => {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        if (login(username, password)) {
+            if (!currentUser.name) showScreen('nameSetupScreen');
+            else if (!currentUser.notificationTimeMorning) showScreen('notificationsSetupScreen');
+            else startMainApp();
+        }
     });
-});
+    
+    // Регистрация
+    document.getElementById('doRegisterBtn').addEventListener('click', () => {
+        const username = document.getElementById('regUsername').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        if (register(username, email, password)) {
+            document.getElementById('regError').textContent = '';
+            // Переключаем на вкладку входа
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.auth-tab[data-tab="login"]').classList.add('active');
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+            document.getElementById('loginForm').classList.add('active');
+            // Очищаем поля
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+        }
+    });
+    
+    // Сохранение имени
+    document.getElementById('saveNameBtn').addEventListener('click', () => {
+        const name = document.getElementById('userNameInput').value;
+        if (name.trim()) {
+            saveUserName(name.trim());
+            showScreen('notificationsSetupScreen');
+        }
+    });
+    
+    // Сохранение уведомлений
+    document.getElementById('saveNotificationsBtn').addEventListener('click', () => {
+        const morning = document.getElementById('morningTime').value;
+        const evening = document.getElementById('eveningTime').value;
+        saveNotificationTimes(morning, evening);
+        startMainApp();
+    });
+    
+    // Выход
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+        currentUser = null;
+        localStorage.removeItem('mind_currentUser');
+        showScreen('authScreen');
+    });
+    
+    // Уведомления
+    document.getElementById('allowNotificationsBtn')?.addEventListener('click', requestNotifications);
+    document.getElementById('denyNotificationsBtn')?.addEventListener('click', () => {
+        document.getElementById('notificationPermission').classList.add('hidden');
+    });
+}
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -322,8 +361,20 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Старт
-if (currentUser && currentUser.name && currentUser.notificationTimeMorning) startMainApp();
-else if (currentUser && currentUser.name) showScreen('notificationsSetupScreen');
-else if (currentUser) showScreen('nameSetupScreen');
-else showScreen('authScreen');
+// ========== СТАРТ ==========
+function init() {
+    setupAuthTabs();
+    initEventHandlers();
+    
+    if (currentUser && currentUser.name && currentUser.notificationTimeMorning) {
+        startMainApp();
+    } else if (currentUser && currentUser.name) {
+        showScreen('notificationsSetupScreen');
+    } else if (currentUser) {
+        showScreen('nameSetupScreen');
+    } else {
+        showScreen('authScreen');
+    }
+}
+
+init();
